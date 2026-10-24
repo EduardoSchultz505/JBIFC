@@ -1,1 +1,22 @@
 @import "tailwindcss";
+
+/* Cole no seu index.css, logo depois de: @import "tailwindcss"; */
+@theme {
+  --color-verde: #2f9e41;
+  --color-verde-escuro: #1e6b2c;
+  --color-verde-claro: #a8ddb2;
+  --color-vermelho: #cd191e;
+  --color-amarelo: #ffc93c;
+  --color-amarelo-sombra: #b8860f;
+  --color-grafite: #1f2a30;
+  --color-creme: #f7f4ea;
+
+  --font-jogo: "Fredoka", "Nunito", system-ui, sans-serif;
+
+  /* sombra sólida do botão Jogar */
+  --shadow-botao: 0 4px 0 var(--color-amarelo-sombra);
+}
+
+html {
+  font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+}
