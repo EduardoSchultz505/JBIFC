@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Cole no seu index.css, logo depois de: @import "tailwindcss"; */
 @theme {
   --color-verde: #2f9e41;
   --color-verde-escuro: #1e6b2c;
@@ -13,10 +12,7 @@
 
   --font-jogo: "Fredoka", "Nunito", system-ui, sans-serif;
 
-  /* sombra sólida do botão Jogar */
   --shadow-botao: 0 4px 0 var(--color-amarelo-sombra);
-}
 
-html {
-  font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+  --shadow-moldura: 10px 10px 0 var(--color-grafite);
 }

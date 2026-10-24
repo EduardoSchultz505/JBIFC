@@ -1,4 +1,4 @@
-
+import { Link } from "react-router"
 
 function Navbar() {
 
@@ -7,12 +7,12 @@ function Navbar() {
             <img src="" alt="JBIFC" />
 
             <ul className="w-[30%] flex flex-row justify-center items-center gap-6">
-                <li><a href="">Início</a></li>
-                <li><a href="">Ranking</a></li>
-                <li><a href="">Equipe</a></li>
+                <li><Link to="/">Início</Link></li>
+                <li><Link to="/ranking">Ranking</Link></li>
+                <li><Link to="/equipe">Equipe</Link></li>
             </ul>
 
-            <button>Jogar</button>
+            <Link className="bg-vermelho p-2 rounded-lg">Jogar</Link>
         </nav>
     )
 }

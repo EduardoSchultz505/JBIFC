@@ -1,0 +1,51 @@
+projeto/
+  .gitignore                  (precisa ter node_modules e .env)
+  README.md
+  docs/
+    projeto-microjogos.md     (documento de requisitos)
+
+  frontend/
+    index.html                (link do Google Fonts no head)
+    package.json
+    vite.config.js
+    eslint.config.js
+    .env                      (VITE_API_URL, fora do Git)
+    .env.example
+    vercel.json               (redirecionamento das rotas, se usar a Vercel)
+    public/
+      _redirects              (só se usar a Netlify)
+      favicon.svg
+      game/                   (tudo que o Phaser carrega por URL)
+        audio/
+        desvie/
+        clique/
+        vigilia-dos-porcos/
+    src/
+      main.jsx                (BrowserRouter envolvendo o App)
+      App.jsx                 (Navbar, rotas e Footer)
+      index.css               (@import "tailwindcss" e o conteúdo do tema.css)
+      assets/                 (logo e imagens usadas pelo React)
+      components/
+        Navbar.jsx
+        Footer.jsx
+      pages/
+        Landing.jsx
+        Jogar.jsx
+        Ranking.jsx
+        ComoJogar.jsx
+        Equipe.jsx
+      game/
+        Game.jsx              (cria e destruiu o Phaser)
+        config.js             (tamanho do jogo e as cores em hexadecimal)
+        scenes/
+        minigames/
+          Minijogo.js         (classe base)
+          Clique.js
+          Desvie.js
+          VigiliaDosPorcos.js
+
+  backend/
+    server.js
+    package.json
+    .env                      (DATABASE_URL, fora do Git)
+    .env.example
