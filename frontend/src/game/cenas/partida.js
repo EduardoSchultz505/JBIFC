@@ -1,17 +1,21 @@
 import Phaser from "phaser";
 
-// Pega o export default de cada arquivo de src/jogo/minigame
+// Pega o export default de cada arquivo de src/game/minigames.
+// Arquivos auxiliares (como a classe base) devem começar com _ para ficarem de fora.
 const MINIGAMES = Object.values(
-  import.meta.glob("../minigame/*.js", { eager: true })
+  import.meta.glob(["../minigames/*.js", "!../minigames/_*.js"], { eager: true })
 )
   .map((modulo) => modulo.default)
   .filter(Boolean);
 
 const VIDAS = 3;
-const PONTOS_POR_VITORIA = 10;
+const PONTOS_POR_VITORIA = 1; // RF07
 const TEMPO_INSTRUCAO = 1000; // ms
 const TEMPO_FEEDBACK = 900; // ms
 const TEMPO_MINIMO = 1500; // ms (RN06)
+
+const FONTE = "Fredoka, sans-serif";
+const COR = { amarelo: "#FFC93C", verde: "#67F5A5", vermelho: "#CD191E", branco: "#FFFFFF" };
 
 export default class Partida extends Phaser.Scene {
   constructor() {
@@ -29,32 +33,40 @@ export default class Partida extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    // tamanhos proporcionais à altura do jogo (base 720), para o texto não ficar minúsculo no celular
+    const k = height / 720;
+    const px = (n) => `${Math.round(n * k)}px`;
 
-    this.textoPontos = this.add.text(16, 12, "", { fontSize: "24px", color: "#FFC93C" });
+    this.textoPontos = this.add
+      .text(24, 16, "", { fontFamily: FONTE, fontSize: px(40), color: COR.amarelo })
+      .setDepth(20);
     this.textoVidas = this.add
-      .text(width - 16, 12, "", { fontSize: "24px", color: "#ffffff" })
-      .setOrigin(1, 0);
+      .text(width - 24, 16, "", { fontFamily: FONTE, fontSize: px(40), color: COR.branco })
+      .setOrigin(1, 0)
+      .setDepth(20);
     this.textoCentro = this.add
       .text(width / 2, height / 2, "", {
-        fontSize: "56px",
+        fontFamily: FONTE,
+        fontSize: px(110),
         fontStyle: "bold",
-        color: "#ffffff",
+        color: COR.branco,
         align: "center",
       })
       .setOrigin(0.5)
       .setDepth(10);
     this.barra = this.add
-      .rectangle(0, height - 6, width, 8, 0xffc93c)
+      .rectangle(0, height - 8 * k, width, 12 * k, 0xffc93c)
       .setOrigin(0, 0.5)
-      .setScale(0, 1);
+      .setScale(0, 1)
+      .setDepth(20);
 
     // Se sair no meio da rodada, limpa o minigame
-    this.events.once("shutdown", () => this.minigame?.destruir());
+    this.events.once("shutdown", () => this.limparMinigame());
 
     this.atualizarHud();
 
     if (MINIGAMES.length === 0) {
-      this.textoCentro.setText("Nenhum minigame\nem src/jogo/minigame").setFontSize(32);
+      this.textoCentro.setText("Nenhum minigame\nem src/game/minigames").setFontSize(px(48));
       return;
     }
     this.proximaRodada();
@@ -85,7 +97,7 @@ export default class Partida extends Phaser.Scene {
     this.minigame = new Minigame(this);
     this.estado = "instrucao";
     this.barra.setScale(0, 1);
-    this.textoCentro.setText(this.minigame.instrucao).setColor("#ffffff");
+    this.textoCentro.setText(this.minigame.instrucao).setColor(COR.branco);
 
     this.time.delayedCall(TEMPO_INSTRUCAO, () => {
       this.textoCentro.setText("");
@@ -113,38 +125,35 @@ export default class Partida extends Phaser.Scene {
 
   encerrarRodada(venceu) {
     this.estado = "feedback";
-    this.minigame.destruir();
-    this.minigame = null;
     this.barra.setScale(0, 1);
 
     if (venceu) {
       this.pontos += PONTOS_POR_VITORIA;
       this.sequencia += 1;
-      this.textoCentro.setText("ACERTOU!").setColor("#67F5A5");
+      this.textoCentro.setText("ACERTOU!").setColor(COR.verde);
     } else {
       this.vidas -= 1;
       this.sequencia = 0;
-      this.textoCentro.setText("ERROU!").setColor("#CD191E");
+      this.textoCentro.setText("ERROU!").setColor(COR.vermelho);
     }
     this.atualizarHud();
 
+    // o minigame continua visível durante o feedback e só some depois
     this.time.delayedCall(TEMPO_FEEDBACK, () => {
+      this.limparMinigame();
       if (this.vidas > 0) this.proximaRodada();
       else this.terminar();
     });
   }
 
+  limparMinigame() {
+    this.minigame?.destruir();
+    this.minigame = null;
+  }
+
   terminar() {
-    const { width, height } = this.scale;
     this.estado = "fim";
-    this.textoCentro.setText(`Fim de jogo\n${this.pontos} pontos`).setColor("#ffffff");
-    this.add
-      .text(width / 2, height / 2 + 110, "Enter para jogar de novo", { fontSize: "22px" })
-      .setOrigin(0.5);
-
-    // O React escuta isso e envia a pontuação à API (RN05: uma vez por partida)
+    // O React escuta isso, mostra a tela final e envia a pontuação (RN05: uma vez por partida)
     this.game.events.emit("fim-de-partida", this.pontos);
-
-    this.input.keyboard.once("keydown-ENTER", () => this.scene.restart());
   }
 }

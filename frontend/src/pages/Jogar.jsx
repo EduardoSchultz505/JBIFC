@@ -11,11 +11,9 @@ export default function Jogar() {
 
   return (
     <main className="min-h-screen bg-[#101522] text-white flex flex-col items-center px-4 py-[30px]">
-      <h1>JBIFC</h1>
-      <p>Teste</p>
       <div
         ref={containerRef}
-        className="aspect-video w-full max-w-[800px] overflow-hidden rounded-lg border-2 border-[#67F5A5]"
+        className="aspect-video w-full max-w-200 overflow-hidden rounded-lg border-2 border-[#67F5A5]"
       />
     </main>
   );

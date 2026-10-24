@@ -9,7 +9,7 @@ export function criarJogo(parent) {
     parent,
     width: 800,
     height: 450,
-    backgroundColor: "#101522",
+    backgroundColor: "#757575",
     pixelArt: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [Menu, Carregamento, Partida],
