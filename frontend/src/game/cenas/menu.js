@@ -5,8 +5,13 @@ export default class Menu extends Phaser.Scene {
     super("Menu");
   }
 
+  preload() {
+    this.load.image("play", "/game/icons/play.svg");
+  }
+
   create() {
     const { width, height } = this.scale;
+
     this.criarBotaoPlay(width / 2, height / 2);
 
     this.input.keyboard.once("keydown-SPACE", () => this.iniciar());
@@ -14,24 +19,26 @@ export default class Menu extends Phaser.Scene {
   }
 
   criarBotaoPlay(x, y) {
-    const raio = 64;
-    const fundo = this.add.circle(0, 0, raio, 0xffc93c).setStrokeStyle(6, 0x1f2a30);
-    const simbolo = this.add.triangle(8, 0, 0, 0, 0, 60, 52, 30, 0x1f2a30);
+  const botao = this.add.image(x, y, "play");
 
-    const botao = this.add.container(x, y, [fundo, simbolo]);
-    fundo.setInteractive(new Phaser.Geom.Circle(raio, raio, raio), Phaser.Geom.Circle.Contains);
-    fundo.input.cursor = "pointer";
+  botao.setDisplaySize(128, 128);
+  botao.setInteractive({ useHandCursor: true });
 
-    fundo.on("pointerout", () => this.escalar(botao, 1));
-    fundo.on("pointerdown", () => this.iniciar());
-  }
+  botao.on("pointerdown", () => {
+    this.iniciar();
+  });
+}
 
   escalar(alvo, escala) {
-    this.tweens.add({ targets: alvo, scale: escala, duration: 120 });
+    this.tweens.add({
+      targets: alvo,
+      scale: escala,
+      duration: 120,
+      ease: "Power2"
+    });
   }
 
   iniciar() {
-    // troque "Partida" pelo nome da sua cena de jogo
     this.scene.start("Partida");
   }
 }
