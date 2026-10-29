@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* Cole no seu index.css, logo depois de: @import "tailwindcss"; */
 @theme {
   --color-verde: #2f9e41;
   --color-verde-escuro: #1e6b2c;
@@ -12,7 +13,38 @@
 
   --font-jogo: "Fredoka", "Nunito", system-ui, sans-serif;
 
+  /* sombra sólida do botão Jogar */
   --shadow-botao: 0 4px 0 var(--color-amarelo-sombra);
 
+  /* sombra sólida da moldura do jogo */
   --shadow-moldura: 10px 10px 0 var(--color-grafite);
+
+  /* abertura com a logo: aparece, fica, some (3s no total) */
+  --animate-logo: logo-fade 3s ease-in-out forwards;
+
+}
+
+@font-face {
+  font-family: "PressStart2P";
+  src: url("/fonts/PressStart2P-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+#phaser-container:fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #101814;
+}
+
+#phaser-container:fullscreen canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  image-rendering: pixelated;
 }

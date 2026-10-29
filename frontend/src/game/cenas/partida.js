@@ -14,7 +14,7 @@ const TEMPO_INSTRUCAO = 1000; // ms
 const TEMPO_FEEDBACK = 900; // ms
 const TEMPO_MINIMO = 1500; // ms (RN06)
 
-const FONTE = "Fredoka, sans-serif";
+const FONTE = "PressStart2P";
 const COR = { amarelo: "#FFC93C", verde: "#67F5A5", vermelho: "#CD191E", branco: "#FFFFFF" };
 
 export default class Partida extends Phaser.Scene {
@@ -54,6 +54,10 @@ export default class Partida extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(10);
+      
+this.textoPontos.setResolution(2);
+this.textoVidas.setResolution(2);
+this.textoCentro.setResolution(3);
     this.barra = this.add
       .rectangle(0, height - 8 * k, width, 12 * k, 0xffc93c)
       .setOrigin(0, 0.5)
@@ -71,6 +75,27 @@ export default class Partida extends Phaser.Scene {
     }
     this.proximaRodada();
   }
+
+  redimensionar(width, height) {
+  const escala = Math.min(width / 800, height / 450);
+  const px = (n) => `${Math.round(n * escala)}px`;
+
+  this.textoPontos
+    .setPosition(24 * escala, 16 * escala)
+    .setFontSize(px(40));
+
+  this.textoVidas
+    .setPosition(width - 24 * escala, 16 * escala)
+    .setFontSize(px(40));
+
+  this.textoCentro
+    .setPosition(width / 2, height / 2)
+    .setFontSize(px(110));
+
+  this.barra
+    .setPosition(0, height - 8 * escala)
+    .setSize(width, 12 * escala);
+}
 
   atualizarHud() {
     this.textoPontos.setText(`Pontos: ${this.pontos}`);
