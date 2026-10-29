@@ -1,3 +1,4 @@
+
 import Phaser from "phaser";
 
 export default class Menu extends Phaser.Scene {
@@ -5,40 +6,106 @@ export default class Menu extends Phaser.Scene {
     super("Menu");
   }
 
-  preload() {
-    this.load.image("play", "/game/icons/play.svg");
-  }
-
   create() {
-    const { width, height } = this.scale;
+    const largura = this.scale.width;
+    const altura = this.scale.height;
 
-    this.criarBotaoPlay(width / 2, height / 2);
+    // Fundo
+    this.cameras.main.setBackgroundColor("#151515");
 
-    this.input.keyboard.once("keydown-SPACE", () => this.iniciar());
-    this.input.keyboard.once("keydown-ENTER", () => this.iniciar());
+    // Título
+    this.add
+      .text(largura / 2, 105, "A REGULAR", {
+        fontFamily: "PressStart2P",
+        fontSize: "30px",
+        color: "#ffffff",
+        align: "center",
+      })
+      .setOrigin(0.5);
+
+    this.add
+      .text(largura / 2, 150, "MOSQUITO'S DAY", {
+        fontFamily: "PressStart2P",
+        fontSize: "20px",
+        color: "#2ecc71",
+        align: "center",
+      })
+      .setOrigin(0.5);
+
+    // Botões
+    this.criarBotao(
+      largura / 2,
+      245,
+      "JOGAR",
+      () => this.scene.start("Partida")
+    );
+
+    this.criarBotao(
+      largura / 2,
+      305,
+      "PRÁTICA",
+      () => this.abrirCena("Pratica")
+    );
+
+    this.criarBotao(
+      largura / 2,
+      365,
+      "OPÇÕES",
+      () => this.abrirCena("Opcoes")
+    );
   }
 
-  criarBotaoPlay(x, y) {
-  const botao = this.add.image(x, y, "play");
+  criarBotao(x, y, texto, acao) {
+    const botao = this.add
+      .text(x, y, texto, {
+        fontFamily: "PressStart2P",
+        fontSize: "14px",
+        color: "#ffffff",
+        backgroundColor: "#252525",
+        padding: {
+          x: 18,
+          y: 12,
+        },
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
 
-  botao.setDisplaySize(128, 128);
-  botao.setInteractive({ useHandCursor: true });
+    botao.on("pointerover", () => {
+      botao.setStyle({
+        color: "#2ecc71",
+        backgroundColor: "#303030",
+      });
 
-  botao.on("pointerdown", () => {
-    this.iniciar();
-  });
-}
-
-  escalar(alvo, escala) {
-    this.tweens.add({
-      targets: alvo,
-      scale: escala,
-      duration: 120,
-      ease: "Power2"
+      this.tweens.add({
+        targets: botao,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 100,
+      });
     });
+
+    botao.on("pointerout", () => {
+      botao.setStyle({
+        color: "#ffffff",
+        backgroundColor: "#252525",
+      });
+
+      this.tweens.add({
+        targets: botao,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 100,
+      });
+    });
+
+    botao.on("pointerdown", acao);
   }
 
-  iniciar() {
-    this.scene.start("Partida");
+  abrirCena(nome) {
+    if (this.scene.manager.keys[nome]) {
+      this.scene.start(nome);
+    } else {
+      console.warn(`A cena "${nome}" ainda não foi implementada.`);
+    }
   }
 }
