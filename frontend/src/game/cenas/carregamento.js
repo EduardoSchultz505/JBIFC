@@ -35,16 +35,14 @@ export default class Carregamento extends Phaser.Scene {
       console.error("Falha ao carregar:", arquivo.key, arquivo.src);
     });
 
-    this.load.svg("play", "/game/icons/play.svg", {
-      width: 128,
-      height: 128,
-    });
-
-    this.load.image("logo", "/game/JBIFC.png");
-    this.load.image("IFC", "/game/IFC.png");
+    this.load.image("logo", "/game/JBIFC.svg");
+    this.load.image("IFC", "/game/IFC.svg");
   }
 
   create() {
+    document.fonts
+      .load("16px PressStart2P")
+      .then(() => this.scene.start("Opening"));
     this.scene.start("Opening");
   }
 }

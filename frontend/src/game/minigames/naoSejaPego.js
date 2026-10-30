@@ -2,29 +2,29 @@ import Phaser from "phaser";
 
 export default class JogueSemSerPego {
   instrucao = "SPAME!";
-  duracao = 8; // segundos
+  duracao = 8; 
 
   constructor(scene) {
     this.scene = scene;
     this.estado = "jogando";
     this.cliquesNecessarios = 28;
-    this.tolerancia = 400;     // ms de perdão depois que o professor chega
-    this.tempoProfessor = 1400; // ms que ele fica na sala
+    this.tolerancia = 400;     
+    this.tempoProfessor = 1400; 
     this.cliques = 0;
-    this.fase = "livre";       // "livre" ou "professor"
-    this.cronometro = 0;       // ms na fase atual
-    this.espera = Phaser.Math.Between(1500, 2500); // ms até a próxima chegada
+    this.fase = "livre";       
+    this.cronometro = 0;       
+    this.espera = Phaser.Math.Between(1500, 2500); 
   }
 
   iniciar() {
     const { width, height } = this.scene.scale;
 
-    // Cenário provisório
+    
     this.cenario = [
       this.scene.add.rectangle(width / 2, height / 2, width, height, 0xf7f4ea),
     ];
 
-    // Monitor ocupa a esquerda até um pouco mais da metade
+    
     const monX = 30;
     const monY = 105;
     const monW = width * 0.58 - monX;
@@ -38,13 +38,13 @@ export default class JogueSemSerPego {
 
     this.cenario.push(
       this.scene.add.rectangle(monX + monW / 2, monY + monH / 2, monW, monH, 0x1f2a30),
-      // Tela do "jogo" que o aluno está jogando
+      
       this.scene.add.rectangle(telaX + this.telaW / 2, telaY + telaH / 2, this.telaW, telaH, 0xa8ddb2),
       this.scene.add.rectangle(telaX + this.telaW / 2, telaY + telaH - 20, this.telaW, 40, 0x2f9e41)
     );
     this.heroi = this.scene.add.rectangle(telaX + 30, this.chaoY - 15, 30, 30, 0xffc93c);
 
-    // Barra de progresso embaixo do monitor
+    
     this.barraFundo = this.scene.add.rectangle(monX + monW / 2, height - 40, monW, 18, 0x1f2a30);
     this.barra = this.scene.add
       .rectangle(monX, height - 40, monW, 12, 0x2f9e41)
@@ -52,7 +52,7 @@ export default class JogueSemSerPego {
       .setScale(0, 1);
     this.barraLargura = monW;
 
-    // Professor (começa escondido)
+    
     const px = width * 0.82;
     this.professor = [
       this.scene.add.rectangle(px, height - 120, 70, 150, 0x1f2a30),
@@ -78,7 +78,7 @@ export default class JogueSemSerPego {
       .setOrigin(0.5)
       .setDepth(5);
 
-    // Clique ou espaço (segurar a tecla não repete)
+    
     this.tecla = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.aoApertar = () => this.apertar();
     this.scene.input.on("pointerdown", this.aoApertar);
@@ -88,13 +88,13 @@ export default class JogueSemSerPego {
     this.scene.events.on("update", this.aoAtualizar);
   }
 
-  atualizar() {} // vazio: quem move o jogo é o evento "update"
+  atualizar() {} 
 
   apertar() {
     if (this.estado !== "jogando") return;
 
     if (this.fase === "professor") {
-      // Depois da tolerância, apertar é ser pego
+      
       if (this.cronometro > this.tolerancia) {
         this.estado = "perdeu";
         this.aviso.setText("PEGO!");
@@ -106,7 +106,7 @@ export default class JogueSemSerPego {
     const prog = Math.min(1, this.cliques / this.cliquesNecessarios);
     this.barra.setScale(prog, 1);
     this.heroi.x = this.telaX + 30 + prog * (this.telaW - 60);
-    this.heroi.y = this.chaoY - (this.cliques % 2 ? 30 : 15); // pulinho
+    this.heroi.y = this.chaoY - (this.cliques % 2 ? 30 : 15); 
     if (prog >= 1) this.estado = "ganhou";
   }
 

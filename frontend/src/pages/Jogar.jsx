@@ -18,13 +18,13 @@ export default function Jogar() {
 
     async function iniciarJogo() {
       try {
-        // Aguarda a fonte Fredoka antes de criar os textos do Phaser.
+        
         if (document.fonts) {
           await document.fonts.load('16px "PressStart2P"');
 await document.fonts.ready;
         }
 
-        // O componente pode ter sido desmontado durante o carregamento.
+        
         if (cancelado || !containerRef.current) return;
 
         jogo = criarJogo(containerRef.current);
@@ -50,7 +50,7 @@ await document.fonts.ready;
           atualizarTelaCheia
         );
 
-        // Guarda a função para remover o evento na limpeza.
+        
         jogo.events.once("destroy", () => {
           document.removeEventListener(
             "fullscreenchange",

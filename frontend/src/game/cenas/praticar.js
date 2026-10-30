@@ -1,7 +1,7 @@
 
 import Phaser from "phaser";
 
-// Carrega automaticamente todos os minigames.
+
 const MINIGAMES = Object.values(
   import.meta.glob(["../minigames/*.js", "!../minigames/_*.js"], {
     eager: true,
@@ -41,9 +41,9 @@ export default class Pratica extends Phaser.Scene {
     });
   }
 
-  // --------------------------------
-  // SELEÇÃO DOS MINIGAMES
-  // --------------------------------
+  
+  
+  
 
   mostrarSelecao() {
     this.limparTela();
@@ -146,9 +146,9 @@ export default class Pratica extends Phaser.Scene {
       .toUpperCase();
   }
 
-  // --------------------------------
-  // INICIAR MINIGAME
-  // --------------------------------
+  
+  
+  
 
   iniciarMinigame(Minigame) {
   this.limparMinigame();
@@ -190,9 +190,9 @@ export default class Pratica extends Phaser.Scene {
     });
   }
 
-  // --------------------------------
-  // TEMPO E HUD
-  // --------------------------------
+  
+  
+  
 
   criarBarraTempo() {
     const { width, height } = this.scale;
@@ -233,9 +233,9 @@ export default class Pratica extends Phaser.Scene {
     }
   }
 
-  // --------------------------------
-  // RESULTADO
-  // --------------------------------
+  
+  
+  
 
   encerrarMinigame(venceu) {
     if (this.estado !== "jogando") return;
@@ -270,9 +270,9 @@ export default class Pratica extends Phaser.Scene {
     });
   }
 
-  // --------------------------------
-  // NAVEGAÇÃO E LIMPEZA
-  // --------------------------------
+  
+  
+  
 
   voltarSelecao() {
     this.limparMinigame();

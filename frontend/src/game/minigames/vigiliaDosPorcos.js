@@ -2,32 +2,32 @@ import Phaser from "phaser";
 
 export default class VigiliaDosPorcos {
   instrucao = "ILUMINE";
-  duracao = 8; // segundos
+  duracao = 8; 
 
   constructor(scene) {
     this.scene = scene;
     this.estado = "jogando";
     this.ladroes = [];
     this.quantidade = 3;
-    this.tempoParaAchar = 600; // ms com o círculo em cima
-    this.raio = 80;            // raio do círculo que revela
-    this.velSetas = 400;       // px/s com as setas
+    this.tempoParaAchar = 600; 
+    this.raio = 80;            
+    this.velSetas = 400;       
   }
 
   iniciar() {
     const { width, height } = this.scene.scale;
     this.origem = { x: 60, y: height - 50 };
-    this.centro = { x: width / 2, y: height / 2 }; // posição do círculo
+    this.centro = { x: width / 2, y: height / 2 }; 
     this.ultimoMouse = { x: -1, y: -1 };
 
-    // Paisagem provisória
+    
     this.fundo = [
       this.scene.add.rectangle(width / 2, height / 2, width, height, 0x1e6b2c),
       this.scene.add.ellipse(width * 0.3, height * 0.7, 700, 220, 0x2f9e41),
       this.scene.add.ellipse(width * 0.8, height * 0.75, 600, 200, 0x2f9e41),
     ].map((f) => f.setDepth(0));
 
-    // Ladrões invisíveis até entrarem no círculo
+    
     while (this.ladroes.length < this.quantidade) {
       const x = Phaser.Math.Between(120, width - 60);
       const y = Phaser.Math.Between(150, height - 110);
@@ -56,7 +56,7 @@ export default class VigiliaDosPorcos {
     this.scene.events.on("update", this.aoAtualizar);
   }
 
-  atualizar() {} // vazio: quem move o jogo é o evento "update"
+  atualizar() {} 
 
   quadro() {
     if (this.estado !== "jogando") return;
@@ -65,7 +65,7 @@ export default class VigiliaDosPorcos {
     const { x: ox, y: oy } = this.origem;
     const r = this.raio;
 
-    // Mouse: só move o círculo se o cursor realmente se moveu
+    
     const p = this.scene.input.activePointer;
     if (p.x !== this.ultimoMouse.x || p.y !== this.ultimoMouse.y) {
       this.ultimoMouse = { x: p.x, y: p.y };
@@ -73,7 +73,7 @@ export default class VigiliaDosPorcos {
       this.centro.y = p.y;
     }
 
-    // Setas também movem o círculo
+    
     const passo = this.velSetas * (dt / 1000);
     if (this.teclas.left.isDown) this.centro.x -= passo;
     if (this.teclas.right.isDown) this.centro.x += passo;
@@ -85,32 +85,32 @@ export default class VigiliaDosPorcos {
     const { x: cx, y: cy } = this.centro;
     const ang = Phaser.Math.Angle.Between(ox, oy, cx, cy);
 
-        // Cone + círculo numa forma só (um preenchimento, sem sobreposição)
+        
     const D = Phaser.Math.Distance.Between(ox, oy, cx, cy);
     this.feixe.clear();
     this.feixe.fillStyle(0xffc93c, 0.3);
     if (D <= r) {
-      // lanterna dentro do círculo: só o círculo
+      
       this.feixe.fillCircle(cx, cy, r);
     } else {
-      // pontos de tangência: ângulos ang ± (π - β), vistos do centro
+      
       const beta = Math.acos(r / D);
       const a1 = ang - (Math.PI - beta);
       const a2 = ang + (Math.PI - beta);
       this.feixe.beginPath();
       this.feixe.moveTo(ox, oy);
       this.feixe.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
-      this.feixe.arc(cx, cy, r, a1, a2, false); // contorna o lado de longe
+      this.feixe.arc(cx, cy, r, a1, a2, false); 
       this.feixe.closePath();
       this.feixe.fillPath();
     }
     this.lanterna.setRotation(ang);
 
-    // Só o círculo revela e conta o tempo de luz
+    
     for (const l of this.ladroes) {
       if (l.achado) continue;
       const dist = Phaser.Math.Distance.Between(cx, cy, l.obj.x, l.obj.y);
-      const iluminado = dist < r + 17; // 17 = meia largura do ladrão
+      const iluminado = dist < r + 17; 
 
       l.obj.setAlpha(iluminado ? 1 : 0);
       l.luz = iluminado ? l.luz + dt : Math.max(0, l.luz - dt * 0.5);

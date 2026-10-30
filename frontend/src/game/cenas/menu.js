@@ -8,65 +8,48 @@ export default class Menu extends Phaser.Scene {
 
   create() {
     const largura = this.scale.width;
-    // eslint-disable-next-line no-unused-vars
     const altura = this.scale.height;
+    const k = altura / 450;
 
     this.cameras.main.setBackgroundColor("#151515");
 
     this.add
-      .text(largura / 2, 105, "A REGULAR", {
+      .text(largura / 2, 105 * k, "A REGULAR", {
         fontFamily: "PressStart2P",
-        fontSize: "30px",
+        fontSize: "48px",
         color: "#ffffff",
-        align: "center",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(2);
 
     this.add
-      .text(largura / 2, 150, "MOSQUITO'S DAY", {
+      .text(largura / 2, 150 * k, "MOSQUITO'S DAY", {
         fontFamily: "PressStart2P",
-        fontSize: "20px",
+        fontSize: "32px",
         color: "#2ecc71",
-        align: "center",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(2);
 
-    this.criarBotao(
-      largura / 2,
-      245,
-      "JOGAR",
-      () => this.scene.start("Partida")
-    );
-
-    this.criarBotao(
-      largura / 2,
-      305,
-      "PRÁTICA",
-      () => this.abrirCena("Pratica")
-    );
-
-    this.criarBotao(
-      largura / 2,
-      365,
-      "OPÇÕES",
-      () => this.abrirCena("Opcoes")
-    );
+    this.criarBotao(largura / 2, 245 * k, "JOGAR", () => this.scene.start("Partida"));
+    this.criarBotao(largura / 2, 305 * k, "PRÁTICA", () => this.abrirCena("Pratica"));
+    this.criarBotao(largura / 2, 365 * k, "OPÇÕES", () => this.abrirCena("Opcoes"));
   }
+
 
   criarBotao(x, y, texto, acao) {
     const botao = this.add
       .text(x, y, texto, {
         fontFamily: "PressStart2P",
-        fontSize: "14px",
+        fontSize: "24px",
         color: "#ffffff",
         backgroundColor: "#252525",
-        padding: {
-          x: 18,
-          y: 12,
-        },
+        padding: { x: 29, y: 19 },
       })
       .setOrigin(0.5)
+      .setResolution(2)
       .setInteractive({ useHandCursor: true });
+
 
     botao.on("pointerover", () => {
       botao.setStyle({

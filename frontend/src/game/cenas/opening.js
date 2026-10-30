@@ -17,7 +17,13 @@ export default class Opening extends Phaser.Scene {
     const ifc = this.add.image(width * 0.35, height / 2, "IFC");
     const logo = this.add.image(width * 0.65, height / 2, "logo");
 
-    // Ajusta o tamanho das duas imagens
+    this.textures.get("logo").setFilter(Phaser.Textures.FilterMode.NEAREST);
+
+    ifc.setScale(
+      Math.min((width * 0.3) / ifc.width, (height * 0.4) / ifc.height)
+    );
+    logo.setScale(8);
+
     [ifc, logo].forEach((imagem) => {
       imagem.setScale(
         Math.min(
@@ -26,18 +32,15 @@ export default class Opening extends Phaser.Scene {
         )
       );
 
-      // Começam invisíveis
       imagem.setAlpha(0);
     });
 
-    // Fade-in das duas logos
     this.tweens.add({
       targets: [ifc, logo],
       alpha: 1,
       duration: FADE_MS,
       ease: "Sine.easeInOut",
       onComplete: () => {
-        // Mantém as logos visíveis antes de desaparecerem
         this.time.delayedCall(PAUSA_MS, () => {
           this.tweens.add({
             targets: [ifc, logo],

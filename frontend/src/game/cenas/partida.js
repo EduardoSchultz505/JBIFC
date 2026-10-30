@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
-// Pega o export default de cada arquivo de src/game/minigames.
-// Arquivos auxiliares (como a classe base) devem começar com _ para ficarem de fora.
+
+
 const MINIGAMES = Object.values(
   import.meta.glob(["../minigames/*.js", "!../minigames/_*.js"], { eager: true })
 )
@@ -9,10 +9,10 @@ const MINIGAMES = Object.values(
   .filter(Boolean);
 
 const VIDAS = 3;
-const PONTOS_POR_VITORIA = 1; // RF07
-const TEMPO_INSTRUCAO = 1000; // ms
-const TEMPO_FEEDBACK = 900; // ms
-const TEMPO_MINIMO = 1500; // ms (RN06)
+const PONTOS_POR_VITORIA = 1; 
+const TEMPO_INSTRUCAO = 1000; 
+const TEMPO_FEEDBACK = 900; 
+const TEMPO_MINIMO = 1500; 
 
 const FONTE = "PressStart2P";
 const COR = { amarelo: "#FFC93C", verde: "#67F5A5", vermelho: "#CD191E", branco: "#FFFFFF" };
@@ -28,12 +28,12 @@ export default class Partida extends Phaser.Scene {
     this.sequencia = 0;
     this.ultimo = null;
     this.minigame = null;
-    this.estado = "instrucao"; // instrucao | jogando | feedback | fim
+    this.estado = "instrucao"; 
   }
 
   create() {
     const { width, height } = this.scale;
-    // tamanhos proporcionais à altura do jogo (base 720), para o texto não ficar minúsculo no celular
+    
     const k = height / 720;
     const px = (n) => `${Math.round(n * k)}px`;
 
@@ -64,7 +64,7 @@ this.textoCentro.setResolution(3);
       .setScale(0, 1)
       .setDepth(20);
 
-    // Se sair no meio da rodada, limpa o minigame
+    
     this.events.once("shutdown", () => this.limparMinigame());
 
     this.atualizarHud();
@@ -102,7 +102,7 @@ this.textoCentro.setResolution(3);
     this.textoVidas.setText(`Vidas: ${this.vidas}`);
   }
 
-  // Nunca o mesmo minigame duas vezes seguidas (RF02)
+  
   sortear() {
     const opcoes =
       MINIGAMES.length > 1 ? MINIGAMES.filter((M) => M !== this.ultimo) : MINIGAMES;
@@ -111,7 +111,7 @@ this.textoCentro.setResolution(3);
     return escolhido;
   }
 
-  // RN06: -10% a cada 5 vitórias seguidas, mínimo de 1,5 s
+  
   calcularTempo(duracaoBase) {
     const ms = duracaoBase * 1000 * 0.9 ** Math.floor(this.sequencia / 5);
     return Math.max(TEMPO_MINIMO, ms);
@@ -140,9 +140,9 @@ this.textoCentro.setResolution(3);
     this.barra.setScale(Math.max(0, this.tempoRestante / this.tempoTotal), 1);
     this.minigame.atualizar(delta);
 
-    let resultado = this.minigame.resultado(); // jogando | ganhou | perdeu
+    let resultado = this.minigame.resultado(); 
     if (resultado === "jogando" && this.tempoRestante <= 0) {
-      // Minigames de "sobreviver" definem venceAoFimDoTempo = true
+      
       resultado = this.minigame.venceAoFimDoTempo ? "ganhou" : "perdeu";
     }
     if (resultado !== "jogando") this.encerrarRodada(resultado === "ganhou");
@@ -163,7 +163,7 @@ this.textoCentro.setResolution(3);
     }
     this.atualizarHud();
 
-    // o minigame continua visível durante o feedback e só some depois
+    
     this.time.delayedCall(TEMPO_FEEDBACK, () => {
       this.limparMinigame();
       if (this.vidas > 0) this.proximaRodada();
@@ -178,7 +178,7 @@ this.textoCentro.setResolution(3);
 
   terminar() {
     this.estado = "fim";
-    // O React escuta isso, mostra a tela final e envia a pontuação (RN05: uma vez por partida)
+    
     this.game.events.emit("fim-de-partida", this.pontos);
   }
 }
