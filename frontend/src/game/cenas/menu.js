@@ -8,12 +8,11 @@ export default class Menu extends Phaser.Scene {
 
   create() {
     const largura = this.scale.width;
+    // eslint-disable-next-line no-unused-vars
     const altura = this.scale.height;
 
-    // Fundo
     this.cameras.main.setBackgroundColor("#151515");
 
-    // Título
     this.add
       .text(largura / 2, 105, "A REGULAR", {
         fontFamily: "PressStart2P",
@@ -32,7 +31,6 @@ export default class Menu extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Botões
     this.criarBotao(
       largura / 2,
       245,

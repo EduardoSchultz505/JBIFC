@@ -4,6 +4,7 @@ import Menu from "./cenas/menu";
 import Carregamento from "./cenas/carregamento";
 import Partida from "./cenas/partida";
 import Opening from "./cenas/opening";
+import Pratica from "./cenas/praticar";
 
 export function criarJogo(parent) {
   return new Phaser.Game({
@@ -26,6 +27,6 @@ export function criarJogo(parent) {
     fullscreenTarget: parent,
   },
 
-  scene: [Carregamento, Opening, Menu, Partida],
+  scene: [Carregamento, Opening, Menu, Partida, Pratica],
 });
 }
