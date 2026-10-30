@@ -59,7 +59,6 @@ export default class JogueSemSerPego {
       this.scene.add.circle(px, height - 215, 28, 0x1f2a30),
       this.scene.add
         .text(px, height - 275, "PARE!", {
-          fontFamily: "Arial",
           fontSize: "36px",
           fontStyle: "bold",
           color: "#cd191e",
