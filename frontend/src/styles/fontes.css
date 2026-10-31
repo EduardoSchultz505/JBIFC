@@ -1,0 +1,18 @@
+/* Inter: fonte do site. Se o arquivo for variável, 100 900 libera todos os pesos */
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* PressStart2P: usada só dentro do jogo (Phaser).
+   Chame document.fonts.load("16px PressStart2P") antes de criar o jogo */
+@font-face {
+  font-family: "PressStart2P";
+  src: url("/fonts/PressStart2P-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}

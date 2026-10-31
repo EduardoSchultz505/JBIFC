@@ -1,100 +1,106 @@
 import { Link } from "react-router";
+import { ArrowRight } from "lucide-react";
+import TelaDoJogo from "../components/TelaDoJogo";
+import Carrossel from "../components/Carrossel";
+import ComoFunciona from "../components/ComoFunciona";
 
-const desafios = [
-  {
-    title: "Rotina acadêmica",
-    description: "A experiência se baseia em situações cotidianas do ambiente universitário, com ritmo acelerado e atenção constante.",
-  },
-  {
-    title: "Desafios curtos",
-    description: "Cada rodada é objetiva e instigante, reforçando a ideia de ação rápida, reação e controle emocional.",
-  },
-  {
-    title: "Competição saudável",
-    description: "A pontuação e o ranking transformam a performance em uma disputa leve, mas séria, entre os estudantes.",
-  },
-];
-
-const estatisticas = [
-  { label: "Minigames", value: "8+" },
-  { label: "Tempo", value: "rápido" },
-  { label: "Tema", value: "IFC" },
-];
-
-function Landing() {
+export default function Landing() {
+  const larguraDosNomes = ["w-2/5", "w-1/3", "w-1/2", "w-2/5", "w-1/4"];
   return (
-    <main className="min-h-screen bg-[#101522] text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16 lg:px-10">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
+    <main>
+      <section className="pt-11.5 pb-14 md:pt-18 md:pb-20">
+        <div className="mx-auto grid w-[calc(100%-32px)] max-w-275 grid-cols-1 items-center gap-10.5 max-xs:gap-9 md:w-[calc(100%-48px)] md:grid-cols-[.83fr_1.17fr] md:gap-18">
           <div>
-            <span className="inline-flex rounded-full border border-[#d9c7ae]/60 bg-[#d9c7ae]/10 px-4 py-1 text-sm font-medium tracking-[0.14em] text-[#e9dcc3] uppercase">
-              projeto acadêmico
-            </span>
-
-            <h1 className="mt-6 text-4xl font-semibold tracking-[-0.04em] text-[#f5f0e8] md:text-5xl lg:text-6xl">
-              JBIFC
-            </h1>
-
-            <p className="mt-4 max-w-xl text-lg leading-relaxed text-[#d9d3c8]">
-              Um conjunto de minigames inspirados na rotina dos estudantes do IFC, com desafios rápidos, mecânicas diretas e uma proposta de competição leve entre a turma.
+            <p className="text-xs leading-snug font-bold tracking-[.11em] text-brand">
+              PROJETO IFC · DESENVOLVIMENTO WEB 2
             </p>
-
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                to="/jogar"
-                className="rounded-md bg-[#6b8c5a] px-6 py-3 text-base font-medium text-[#f7f4ea] transition hover:opacity-90"
-              >
-                Jogar agora
-              </Link>
-
-              <Link
-                to="/ranking"
-                className="rounded-md border border-white/15 bg-white/3 px-6 py-3 text-base font-medium text-[#f5f0e8] transition hover:bg-white/5"
-              >
-                Ranking
-              </Link>
-            </div>
-
-            <div className="mt-10 grid max-w-lg grid-cols-3 gap-4">
-              {estatisticas.map((item) => (
-                <div key={item.label} className="rounded-xl border border-white/10 bg-[#1b232a]/80 p-4 text-center">
-                  <p className="text-2xl font-semibold text-[#f4d7a1]">{item.value}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#c9c0b3]">{item.label}</p>
-                </div>
-              ))}
-            </div>
+            <h1 className="mt-3 text-[38px] leading-[1.07] font-bold tracking-tighter max-xs:text-4xl md:mt-3.5 md:text-[44px]">
+              JBIFC: Mosquito's Average Day
+            </h1>
+            <p className="mt-4.5 mb-6.5 max-w-120 text-[17px] leading-[1.55] text-muted md:mt-6 md:mb-8 md:text-lg">
+              Leia a instrução, aja rápido e entre no ranking.
+            </p>
+            <Link
+              className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-transparent bg-brand px-5.5 text-[15px] font-semibold text-white transition duration-150 hover:-translate-y-px hover:bg-brand-hover"
+              to="/jogar"
+            >
+              Jogar agora
+              <ArrowRight aria-hidden="true" size={18} />
+            </Link>
           </div>
 
-          <div className="rounded-[1.5rem] border border-[#d9c7ae]/15 bg-[#111821] p-6 shadow-[0_16px_40px_rgba(0,0,0,0.14)]">
-            <div className="rounded-[1.25rem] border border-white/5 bg-[#171e28] p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#d9c7ae]">em cada rodada</p>
-              <ul className="mt-5 space-y-4 text-base text-[#e6e0d8]">
-                <li>Foco e rapidez para cumprir a tarefa proposta.</li>
-                <li>Mecânicas inspiradas em situações do cotidiano universitário.</li>
-                <li>Pontuação e melhor desempenho em um ranking da turma.</li>
-              </ul>
-            </div>
-          </div>
+          <TelaDoJogo />
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-20 lg:px-10">
-        <div className="mb-8">
-          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#d9c7ae]">sobre o jogo</p>
-          <h2 className="mt-3 text-3xl font-semibold text-[#f3efe8] md:text-4xl">Uma proposta simples, direta e reconhecível</h2>
+      <section className="border-t border-line py-14 md:py-18">
+        <div className="mx-auto w-[calc(100%-32px)] max-w-275 md:w-[calc(100%-48px)]">
+          <div className="mb-7 flex flex-col items-start gap-2.5 md:mb-9 md:flex-row md:items-end md:justify-between md:gap-6">
+            <div>
+              <p className="text-xs leading-snug font-bold tracking-[.11em] text-brand">
+                EM TRÊS PASSOS
+              </p>
+              <h2 className="mt-1.75 text-2xl font-semibold tracking-tight">
+                Como funciona
+              </h2>
+            </div>
+          </div>
+          <ComoFunciona />
         </div>
+      </section>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {desafios.map((item) => (
-            <article key={item.title} className="rounded-2xl border border-white/10 bg-[#111821] p-6">
-              <h3 className="text-xl font-semibold text-[#f4f0ea]">{item.title}</h3>
-              <p className="mt-3 text-base leading-relaxed text-[#cbc3b8]">{item.description}</p>
-            </article>
-          ))}
+      <section className="border-t border-line bg-brand-soft py-14 md:py-18">
+        <div className="overflow-hidden motion-reduce:overflow-x-auto">
+          <Carrossel />
+        </div>
+      </section>
+
+      <section className="border-t border-line py-14 md:py-18">
+        <div className="mx-auto w-[calc(100%-32px)] max-w-205 md:w-[calc(100%-48px)]">
+          <div className="mb-7 md:mb-9">
+            <p className="text-xs leading-snug font-bold tracking-[.11em] text-brand">
+              MELHORES PONTUAÇÕES
+            </p>
+            <h2 className="mt-1.75 text-2xl font-semibold tracking-tight">
+              Ranking
+            </h2>
+          </div>
+
+          <div className="relative overflow-hidden rounded-xl border border-line bg-surface">
+            <div aria-hidden="true">
+              <div className="grid min-h-12 grid-cols-[55px_1fr_66px] items-center border-b border-line bg-subtle px-3.5 md:grid-cols-[90px_1fr_110px] md:px-6">
+                <div className="esqueleto h-2.5 w-8 rounded bg-line" />
+                <div className="esqueleto h-2.5 w-14 rounded bg-line" />
+                <div className="esqueleto ml-auto h-2.5 w-10 rounded bg-line" />
+              </div>
+
+              {larguraDosNomes.map((largura, i) => (
+                <div
+                  key={i}
+                  style={{ "--atraso": `${i * 150}ms` }}
+                  className={`grid min-h-14.5 grid-cols-[55px_1fr_66px] items-center border-b border-line px-3.5 last:border-b-0 md:min-h-15.5 md:grid-cols-[90px_1fr_110px] md:px-6 ${i === 0 ? "bg-sun-soft" : ""}`}
+                >
+                  <div className="esqueleto h-3 w-6 rounded bg-subtle" />
+                  <div
+                    className={`esqueleto h-3 rounded bg-subtle ${largura}`}
+                  />
+                  <div className="esqueleto ml-auto h-3 w-10 rounded bg-subtle" />
+                </div>
+              ))}
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center bg-surface/50">
+              <Link
+                to="/ranking"
+                className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg bg-brand px-5.5 text-[15px] font-semibold text-white shadow-game transition duration-150 hover:-translate-y-px hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                Visualizar ranking
+                <ArrowRight aria-hidden="true" size={18} />
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
     </main>
   );
 }
-
-export default Landing;

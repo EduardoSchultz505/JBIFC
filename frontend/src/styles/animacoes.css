@@ -1,0 +1,54 @@
+/* Cria as classes animate-carrossel, animate-varredura e animate-piscar */
+@theme {
+  --animate-carrossel: carrossel 80s linear infinite;
+  --animate-varredura: varredura 5s linear infinite;
+  --animate-piscar: piscar 1.2s step-end infinite;
+
+  @keyframes carrossel {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes varredura {
+    to { transform: translateX(500%); }
+  }
+
+  @keyframes piscar {
+    50% { opacity: 0; }
+  }
+}
+
+/* Linhas de TV antiga sobre o print do jogo */
+.scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgb(0 0 0 / 0.5) 2px 3px
+  );
+}
+
+/* Esqueleto do ranking: brilho que atravessa cada barra */
+.esqueleto {
+  position: relative;
+  overflow: hidden;
+}
+
+.esqueleto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7), transparent);
+  animation: brilho 1.6s ease-in-out infinite;
+  animation-delay: var(--atraso, 0s);
+}
+
+@keyframes brilho {
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto::after {
+    animation: none;
+  }
+}
