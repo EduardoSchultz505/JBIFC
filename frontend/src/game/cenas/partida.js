@@ -29,6 +29,7 @@ export default class Partida extends Phaser.Scene {
     this.ultimo = null;
     this.minigame = null;
     this.estado = "instrucao"; 
+    this.partidaTerminada = false;
   }
 
   create() {
@@ -178,7 +179,14 @@ this.textoCentro.setResolution(3);
 
   terminar() {
     this.estado = "fim";
-    
-    this.game.events.emit("fim-de-partida", this.pontos);
+    if (this.partidaTerminada) return;
+
+    this.partidaTerminada = true;
+    const pontuacaoFinal = this.pontos;
+    console.info("[GameOver] Pontuação capturada:", {
+      vidas: this.vidas,
+      pontuacaoFinal,
+    });
+    this.game.events.emit("fim-de-partida", pontuacaoFinal);
   }
 }

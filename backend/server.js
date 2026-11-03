@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import pg from "pg";
@@ -5,14 +6,54 @@ import pg from "pg";
 const { Pool } = pg;
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000;
+
+function normalizarUrlPostgres(rawUrl) {
+  const url = rawUrl?.trim();
+  if (!url) return null;
+
+  const separador = url.indexOf("://");
+  const ultimoArroba = url.lastIndexOf("@");
+  if (separador < 0 || ultimoArroba < 0) return url;
+
+  const prefixo = url.slice(0, separador + 3);
+  const autenticacao = url.slice(separador + 3, ultimoArroba);
+  const separadorSenha = autenticacao.indexOf(":");
+  if (separadorSenha < 0) return url;
+
+  const usuario = autenticacao.slice(0, separadorSenha);
+  const senhaOriginal = autenticacao.slice(separadorSenha + 1);
+  let senhaCodificada = senhaOriginal;
+
+  try {
+    senhaCodificada = encodeURIComponent(decodeURIComponent(senhaOriginal));
+  } catch {
+    senhaCodificada = encodeURIComponent(senhaOriginal);
+  }
+
+  return `${prefixo}${usuario}:${senhaCodificada}${url.slice(ultimoArroba)}`;
+}
+
+const databaseUrl = normalizarUrlPostgres(process.env.DATABASE_URL);
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: databaseUrl,
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 10000,
 });
 
 app.use(cors());
 app.use(express.json());
+
+app.get("/health", async (_req, res) => {
+  try {
+    const resultado = await pool.query("SELECT NOW() AS agora");
+    res.json({ banco: "conectado", agora: resultado.rows[0].agora });
+  } catch (err) {
+    console.error("[Banco] Falha na verificação de saúde:", err);
+    res.status(503).json({ banco: "indisponível", erro: err.message });
+  }
+});
 
 async function iniciarBanco() {
   await pool.query(`
@@ -53,6 +94,8 @@ app.get("/ranking", async (req, res) => {
 
 app.post("/ranking", async (req, res) => {
   const { usuario, pontuacao, nivel } = req.body || {};
+  const nivelValido = nivel === undefined ? 0 : nivel;
+  console.info("[Ranking] POST recebido:", { usuario, pontuacao, nivel: nivelValido });
 
   if (
     typeof usuario !== "string" ||
@@ -70,7 +113,7 @@ app.post("/ranking", async (req, res) => {
         erro: "O campo 'pontuacao' deve ser um número maior ou igual a 0.",
       });
   }
-  if (!Number.isInteger(nivel) || nivel < 0) {
+  if (!Number.isInteger(nivelValido) || nivelValido < 0) {
     return res
       .status(400)
       .json({
@@ -90,11 +133,12 @@ app.post("/ranking", async (req, res) => {
             data = NOW()
         WHERE EXCLUDED.pontuacao > ranking.pontuacao
       RETURNING (xmax = 0) AS inserido`,
-      [nome, pontuacao, nivel],
+      [nome, pontuacao, nivelValido],
     );
 
     const atualizado = upsert.rowCount > 0;
     const inserido = atualizado && upsert.rows[0].inserido;
+    console.info("[Ranking] Resultado da inserção:", { atualizado, inserido });
 
     const { rows } = await pool.query(
       `SELECT COUNT(*)::int + 1 AS posicao
@@ -103,21 +147,35 @@ app.post("/ranking", async (req, res) => {
           OR (r.pontuacao = u.pontuacao AND r.nivel > u.nivel)`,
       [nome],
     );
+    const { rows: registros } = await pool.query(
+      `SELECT usuario, pontuacao, nivel
+       FROM ranking
+       WHERE LOWER(usuario) = LOWER($1)`,
+      [nome],
+    );
+    console.info("[Banco] Registro confirmado após a operação:", registros[0] ?? null);
 
     res.status(inserido ? 201 : 200).json({
       mensagem: atualizado
         ? "Ranking atualizado."
         : "Pontuação não superou o recorde atual do usuário.",
       posicao: rows[0].posicao,
+      registro: registros[0] ?? null,
     }); 
   } catch (err) {
-    console.error(err);
+    console.error("Erro ao salvar pontuação no ranking:", err);
     res.status(500).json({ erro: "Erro ao salvar no ranking." });
   }
 });
 
+if (!databaseUrl) {
+  console.error("[Banco] DATABASE_URL não está configurada. Defina a variável antes de iniciar o servidor.");
+  process.exit(1);
+}
+
 iniciarBanco()
   .then(() => {
+    console.info("[Banco] Tabela ranking inicializada.");
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);
     });

@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import axios from 'axios'
-import { ArrowRight, RotateCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, RotateCw } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
+const API_URL_LOCAL = import.meta.env.DEV
+  ? 'http://localhost:5000'
+  : API_URL
 
 export default function Ranking() {
   const [state, setState] = useState('carregando') 
@@ -13,9 +16,14 @@ export default function Ranking() {
   useEffect(() => {
     const controller = new AbortController()
 
+    if (!API_URL_LOCAL) {
+      console.error('[Ranking] VITE_API_URL não está configurada.')
+      queueMicrotask(() => setState('erro'))
+      return () => controller.abort()
+    }
+
     axios
-      .get(`${API_URL}/ranking`, {
-        params: { limite: 10 },
+      .get(`${API_URL_LOCAL}/ranking`, {
         signal: controller.signal,
         timeout: 70000, 
       })
@@ -123,7 +131,14 @@ export default function Ranking() {
           </div>
         )}
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link
+            className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-line bg-surface px-5.5 text-[15px] font-semibold text-ink transition duration-150 hover:-translate-y-px hover:border-line-strong hover:bg-subtle"
+            to="/"
+          >
+            <ArrowLeft aria-hidden="true" size={18} strokeWidth={1.8} />
+            Voltar ao início
+          </Link>
           <Link
             className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-transparent bg-brand px-5.5 text-[15px] font-semibold text-white transition duration-150 hover:-translate-y-px hover:bg-brand-hover"
             to="/jogar"
