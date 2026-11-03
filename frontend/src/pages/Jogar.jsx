@@ -13,15 +13,61 @@ export default function Jogar() {
   const [iniciado, setIniciado] = useState(false);
   const [telaCheia, setTelaCheia] = useState(false);
   const [gameOver, setGameOver] = useState(null);
-  const [nome, setNome] = useState("");
   const [estadoSalvamento, setEstadoSalvamento] = useState("idle");
   const [mensagem, setMensagem] = useState("");
+  const [token, setToken] = useState(() => localStorage.getItem("jbifc_token"));
+  const [usuario, setUsuario] = useState("");
+  const [jogadorId, setJogadorId] = useState(null);
+  const [nome, setNome] = useState("");
+  const [senha, setSenha] = useState("");
+  const [modoAuth, setModoAuth] = useState("login");
+  const [authCarregando, setAuthCarregando] = useState(true);
+  const [authErro, setAuthErro] = useState("");
   const navigate = useNavigate();
 
   const containerRef = useRef(null);
   const jogoRef = useRef(null);
   const salvamentoEmAndamentoRef = useRef(false);
   const pontuacaoSalvaRef = useRef(false);
+  const jogadorIdRef = useRef(null);
+  const usuarioRef = useRef("");
+  const tokenRef = useRef(token);
+
+  useEffect(() => {
+    if (!token) {
+      setAuthCarregando(false);
+      return;
+    }
+    if (!API_URL_LOCAL) {
+      setAuthErro("VITE_API_URL não está configurada.");
+      setAuthCarregando(false);
+      return;
+    }
+    if (!token) {
+      setEstadoSalvamento("erro");
+      setMensagem("Faça login novamente para salvar a pontuação.");
+      return;
+    }
+
+    axios.get(`${API_URL_LOCAL}/api/usuario`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 70000,
+    }).then(({ data }) => {
+      setUsuario(data.usuario);
+      setJogadorId(data.id);
+      usuarioRef.current = data.usuario;
+      jogadorIdRef.current = data.id;
+      tokenRef.current = token;
+    }).catch(() => {
+      localStorage.removeItem("jbifc_token");
+      setToken(null);
+      setUsuario("");
+      setJogadorId(null);
+      usuarioRef.current = "";
+      jogadorIdRef.current = null;
+      tokenRef.current = null;
+    }).finally(() => setAuthCarregando(false));
+  }, [token]);
 
   useEffect(() => {
     if (!iniciado || !containerRef.current) return;
@@ -43,13 +89,20 @@ export default function Jogar() {
 
         const aoTerminarPartida = (pontuacaoFinal) => {
           if (cancelado) return;
-          console.info("[GameOver] Pontuação recebida pelo React:", pontuacaoFinal);
+          const pontuacaoExata = Number(pontuacaoFinal);
+          console.info("[GameOver] Jogador conectado:", {
+            jogadorId: jogadorIdRef.current,
+            nome: usuarioRef.current,
+          });
+          console.info("[GameOver] Pontuação capturada no Phaser:", {
+            pontuacaoFinal: pontuacaoExata,
+          });
           salvamentoEmAndamentoRef.current = false;
           pontuacaoSalvaRef.current = false;
-          setNome("");
           setEstadoSalvamento("idle");
           setMensagem("");
-          setGameOver(Number(pontuacaoFinal) || 0);
+          setGameOver(pontuacaoExata);
+          salvarPontuacao(pontuacaoExata);
         };
 
         jogo.events.on("fim-de-partida", aoTerminarPartida);
@@ -114,17 +167,10 @@ export default function Jogar() {
     }
   }
 
-  async function salvarPontuacao() {
-    const nomeLimpo = nome.trim();
-
-    if (!nomeLimpo) {
-      setEstadoSalvamento("erro");
-      setMensagem("Digite seu nome para salvar a pontuação.");
-      return;
-    }
-
+  async function salvarPontuacao(pontuacaoCapturada = gameOver) {
     if (salvamentoEmAndamentoRef.current || pontuacaoSalvaRef.current) return;
-    if (!Number.isFinite(gameOver) || gameOver < 0) {
+    const pontuacaoFinal = Number(pontuacaoCapturada);
+    if (!Number.isInteger(pontuacaoFinal) || pontuacaoFinal < 0) {
       setEstadoSalvamento("erro");
       setMensagem("A pontuação final não é válida.");
       return;
@@ -135,26 +181,40 @@ export default function Jogar() {
       console.error("[Ranking] VITE_API_URL não está configurada.");
       return;
     }
+    if (!tokenRef.current || !jogadorIdRef.current || !usuarioRef.current) {
+      setEstadoSalvamento("erro");
+      setMensagem("Faça login novamente para salvar a pontuação.");
+      return;
+    }
 
     salvamentoEmAndamentoRef.current = true;
     setEstadoSalvamento("salvando");
     setMensagem("");
 
     const dados = {
-      usuario: nomeLimpo,
-      pontuacao: gameOver,
+      jogadorId: jogadorIdRef.current,
+      pontuacao: pontuacaoFinal,
       nivel: 0,
     };
-    console.info("[Ranking] Dados enviados ao backend:", dados);
+    console.info("[Ranking] Dados enviados ao backend:", {
+      nome: usuarioRef.current,
+      jogadorId: jogadorIdRef.current,
+      dados,
+    });
 
     try {
       const resposta = await axios.post(`${API_URL_LOCAL}/ranking`, dados, {
+        headers: { Authorization: `Bearer ${tokenRef.current}` },
         timeout: 70000,
       });
       console.info("[Ranking] Resposta do backend:", resposta.status, resposta.data);
       pontuacaoSalvaRef.current = true;
       setEstadoSalvamento("salvo");
-      setMensagem("Pontuação salva com sucesso!");
+      setMensagem(
+        resposta.data.posicao
+          ? `Pontuação salva! Sua posição: ${resposta.data.posicao}º`
+          : "Pontuação salva com sucesso!",
+      );
     } catch (erro) {
       console.error("[Ranking] Erro ao salvar a pontuação:", {
         status: erro.response?.status,
@@ -165,6 +225,48 @@ export default function Jogar() {
       setMensagem("Não foi possível salvar a pontuação. Tente novamente.");
     } finally {
       salvamentoEmAndamentoRef.current = false;
+    }
+  }
+
+  async function enviarAutenticacao(evento) {
+    evento.preventDefault();
+    setAuthErro("");
+
+    const nomeLimpo = nome.trim();
+    if (nomeLimpo.length < 1 || nomeLimpo.length > 20) {
+      setAuthErro("O nome de usuário deve ter entre 1 e 20 caracteres.");
+      return;
+    }
+    if (senha.length < 8 || senha.length > 72) {
+      setAuthErro("A senha deve ter entre 8 e 72 caracteres.");
+      return;
+    }
+    if (!API_URL_LOCAL) {
+      setAuthErro("VITE_API_URL não está configurada.");
+      return;
+    }
+
+    setAuthCarregando(true);
+    try {
+      const rota = modoAuth === "cadastro" ? "/api/conta" : "/api/login";
+      const resposta = await axios.post(`${API_URL_LOCAL}${rota}`, {
+        usuario: nomeLimpo,
+        senha,
+      }, { timeout: 70000 });
+
+      localStorage.setItem("jbifc_token", resposta.data.token);
+      setToken(resposta.data.token);
+      setUsuario(resposta.data.usuario);
+      setJogadorId(resposta.data.id);
+      jogadorIdRef.current = resposta.data.id;
+      usuarioRef.current = resposta.data.usuario;
+      tokenRef.current = resposta.data.token;
+      setNome("");
+      setSenha("");
+    } catch (erro) {
+      setAuthErro(erro.response?.data?.erro || "Não foi possível entrar. Tente novamente.");
+    } finally {
+      setAuthCarregando(false);
     }
   }
 
@@ -198,14 +300,68 @@ export default function Jogar() {
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-game">
                 <span aria-hidden="true" className="absolute top-3 left-3 size-5.5 border-t border-l border-white/10 md:top-5.5 md:left-5.5 md:size-9.5" />
                 <span aria-hidden="true" className="absolute right-3 bottom-3 size-5.5 border-r border-b border-white/10 md:right-5.5 md:bottom-5.5 md:size-9.5" />
-
-                <button
-                  onClick={() => setIniciado(true)}
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621]"
-                >
-                  <CirclePlay size={24} strokeWidth={2} />
-                  Jogar
-                </button>
+                {token && usuario ? (
+                  <div className="flex flex-col items-center">
+                    <p className="mb-4 text-sm font-semibold text-white/80">Jogando como {usuario}</p>
+                    <button
+                      onClick={() => setIniciado(true)}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621]"
+                    >
+                      <CirclePlay size={24} strokeWidth={2} />
+                      Jogar
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={enviarAutenticacao} className="w-[calc(100%-32px)] max-w-sm rounded-xl border border-white/15 bg-[#252525] p-5 text-center shadow-game">
+                    <h2 className="text-lg font-bold">
+                      {modoAuth === "cadastro" ? "Criar conta" : "Entrar"}
+                    </h2>
+                    <label className="mt-4 block text-left text-sm font-semibold" htmlFor="usuario">
+                      Nome de usuário
+                    </label>
+                    <input
+                      id="usuario"
+                      className="mt-2 min-h-11 w-full rounded-lg border border-white/20 bg-[#151515] px-3 text-white outline-none focus:border-[#67F5A5]"
+                      maxLength={20}
+                      value={nome}
+                      onChange={(evento) => setNome(evento.target.value)}
+                      autoComplete="username"
+                      placeholder="Seu nome de usuário"
+                    />
+                    <label className="mt-4 block text-left text-sm font-semibold" htmlFor="senha">
+                      Senha
+                    </label>
+                    <input
+                      id="senha"
+                      type="password"
+                      className="mt-2 min-h-11 w-full rounded-lg border border-white/20 bg-[#151515] px-3 text-white outline-none focus:border-[#67F5A5]"
+                      minLength={8}
+                      maxLength={72}
+                      value={senha}
+                      onChange={(evento) => setSenha(evento.target.value)}
+                      autoComplete={modoAuth === "cadastro" ? "new-password" : "current-password"}
+                      placeholder="Entre 8 e 72 caracteres"
+                    />
+                    {authErro && <p className="mt-3 text-sm text-[#ff8585]" role="alert">{authErro}</p>}
+                    <button
+                      type="submit"
+                      disabled={authCarregando}
+                      className="mt-5 min-h-11 w-full rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {authCarregando ? "Aguarde..." : modoAuth === "cadastro" ? "Criar conta" : "Entrar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModoAuth((modo) => modo === "login" ? "cadastro" : "login");
+                        setAuthErro("");
+                      }}
+                      className="mt-3 min-h-10 text-sm font-semibold text-[#FFC93C] underline"
+                    >
+                      {modoAuth === "login" ? "Ainda não tenho conta: criar conta" : "Já tenho conta: entrar"}
+                    </button>
+                  </form>
+                )}
               </div>
             )}
 
@@ -225,22 +381,6 @@ export default function Jogar() {
                     <strong className="text-[#FFC93C]">{gameOver}</strong>
                   </p>
 
-                  <label className="mt-5 block text-left text-sm font-semibold" htmlFor="nome-jogador">
-                    Nome do jogador
-                  </label>
-                  <input
-                    id="nome-jogador"
-                    className="mt-2 min-h-11 w-full rounded-lg border border-white/20 bg-[#151515] px-3 text-white outline-none focus:border-[#67F5A5]"
-                    maxLength={50}
-                    value={nome}
-                    onChange={(evento) => setNome(evento.target.value)}
-                    onKeyDown={(evento) => {
-                      if (evento.key === "Enter") salvarPontuacao();
-                    }}
-                    disabled={estadoSalvamento === "salvo"}
-                    placeholder="Digite seu nome"
-                  />
-
                   {mensagem && (
                     <p
                       className={`mt-3 text-sm ${
@@ -259,7 +399,7 @@ export default function Jogar() {
                       onClick={salvarPontuacao}
                       disabled={estadoSalvamento === "salvando" || estadoSalvamento === "salvo"}
                     >
-                      {estadoSalvamento === "salvando" ? "Salvando..." : estadoSalvamento === "salvo" ? "Salvo" : "Salvar pontuação"}
+                      {estadoSalvamento === "salvando" ? "Salvando..." : estadoSalvamento === "salvo" ? "Pontuação salva" : estadoSalvamento === "erro" ? "Tentar novamente" : "Salvando..."}
                     </button>
                     <button
                       type="button"

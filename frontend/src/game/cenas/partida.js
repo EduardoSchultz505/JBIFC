@@ -186,6 +186,7 @@ this.textoCentro.setResolution(3);
     console.info("[GameOver] Pontuação capturada:", {
       vidas: this.vidas,
       pontuacaoFinal,
+      hud: this.textoPontos.text,
     });
     this.game.events.emit("fim-de-partida", pontuacaoFinal);
   }
