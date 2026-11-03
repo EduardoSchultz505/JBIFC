@@ -3,6 +3,7 @@ import { Maximize, CirclePlay } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router";
 import { criarJogo } from "../game/loadGame";
+import { isDemoModeAtivo, setDemoModeAtivo } from "../config/demoMode";
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 const API_URL_LOCAL = import.meta.env.DEV
@@ -23,6 +24,7 @@ export default function Jogar() {
   const [modoAuth, setModoAuth] = useState("login");
   const [authCarregando, setAuthCarregando] = useState(true);
   const [authErro, setAuthErro] = useState("");
+  const [demoAtivo, setDemoAtivo] = useState(() => isDemoModeAtivo());
   const navigate = useNavigate();
 
   const containerRef = useRef(null);
@@ -32,6 +34,10 @@ export default function Jogar() {
   const jogadorIdRef = useRef(null);
   const usuarioRef = useRef("");
   const tokenRef = useRef(token);
+
+  useEffect(() => {
+    setDemoModeAtivo(demoAtivo);
+  }, [demoAtivo]);
 
   useEffect(() => {
     if (!token) {
@@ -168,6 +174,12 @@ export default function Jogar() {
   }
 
   async function salvarPontuacao(pontuacaoCapturada = gameOver) {
+    if (demoAtivo) {
+      setEstadoSalvamento("idle");
+      setMensagem("Ranking indisponível no modo de demonstração.");
+      return;
+    }
+
     if (salvamentoEmAndamentoRef.current || pontuacaoSalvaRef.current) return;
     const pontuacaoFinal = Number(pontuacaoCapturada);
     if (!Number.isInteger(pontuacaoFinal) || pontuacaoFinal < 0) {
@@ -300,7 +312,28 @@ export default function Jogar() {
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-game">
                 <span aria-hidden="true" className="absolute top-3 left-3 size-5.5 border-t border-l border-white/10 md:top-5.5 md:left-5.5 md:size-9.5" />
                 <span aria-hidden="true" className="absolute right-3 bottom-3 size-5.5 border-r border-b border-white/10 md:right-5.5 md:bottom-5.5 md:size-9.5" />
-                {token && usuario ? (
+                {demoAtivo ? (
+                  <div className="flex flex-col items-center">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#FFC93C]">
+                      Modo de demonstração
+                    </p>
+                    <p className="mb-4 text-sm text-white/70">Ranking indisponível neste modo.</p>
+                    <button
+                      onClick={() => setIniciado(true)}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621]"
+                    >
+                      <CirclePlay size={24} strokeWidth={2} />
+                      Jogar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDemoAtivo(false)}
+                      className="mt-4 text-xs font-semibold text-[#67F5A5] underline"
+                    >
+                      Desativar modo de demonstração
+                    </button>
+                  </div>
+                ) : token && usuario ? (
                   <div className="flex flex-col items-center">
                     <p className="mb-4 text-sm font-semibold text-white/80">Jogando como {usuario}</p>
                     <button
@@ -360,6 +393,13 @@ export default function Jogar() {
                     >
                       {modoAuth === "login" ? "Ainda não tenho conta: criar conta" : "Já tenho conta: entrar"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setDemoAtivo(true)}
+                      className="mt-3 min-h-10 text-sm font-semibold text-[#67F5A5] underline"
+                    >
+                      Entrar em modo de demonstração
+                    </button>
                   </form>
                 )}
               </div>
@@ -373,52 +413,65 @@ export default function Jogar() {
               {gameOver !== null && (
                 <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-[#151515]/95 px-4">
                   <div className="w-full max-w-sm rounded-xl border border-white/15 bg-[#252525] p-5 text-center shadow-game md:p-7">
-                  <h2 className="text-xl font-bold text-[#CD191E] md:text-2xl">
-                    GAME OVER
-                  </h2>
-                  <p className="mt-3 text-sm text-white/80 md:text-base">
-                    Pontuação final:{" "}
-                    <strong className="text-[#FFC93C]">{gameOver}</strong>
-                  </p>
-
-                  {mensagem && (
-                    <p
-                      className={`mt-3 text-sm ${
-                        estadoSalvamento === "salvo" ? "text-[#67F5A5]" : "text-[#CD191E]"
-                      }`}
-                      role="alert"
-                    >
-                      {mensagem}
+                    <h2 className="text-xl font-bold text-[#CD191E] md:text-2xl">
+                      GAME OVER
+                    </h2>
+                    <p className="mt-3 text-sm text-white/80 md:text-base">
+                      Pontuação final:{" "}
+                      <strong className="text-[#FFC93C]">{gameOver}</strong>
                     </p>
-                  )}
 
-                  <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      className="min-h-11 flex-1 rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={salvarPontuacao}
-                      disabled={estadoSalvamento === "salvando" || estadoSalvamento === "salvo"}
-                    >
-                      {estadoSalvamento === "salvando" ? "Salvando..." : estadoSalvamento === "salvo" ? "Pontuação salva" : estadoSalvamento === "erro" ? "Tentar novamente" : "Salvando..."}
-                    </button>
-                    <button
-                      type="button"
-                      className="min-h-11 flex-1 rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
-                      onClick={voltarAoMenu}
-                    >
-                      Voltar ao menu
-                    </button>
-                  </div>
+                    {mensagem && (
+                      <p
+                        className={`mt-3 text-sm ${
+                          estadoSalvamento === "salvo" ? "text-[#67F5A5]" : demoAtivo ? "text-[#FFC93C]" : "text-[#CD191E]"
+                        }`}
+                        role="alert"
+                      >
+                        {mensagem}
+                      </p>
+                    )}
 
-                  {estadoSalvamento === "salvo" && (
-                    <button
-                      type="button"
-                      className="mt-3 min-h-11 w-full rounded-lg border border-[#FFC93C] px-4 font-semibold text-[#FFC93C] hover:bg-white/10"
-                      onClick={() => navigate("/ranking")}
-                    >
-                      Ver ranking
-                    </button>
-                  )}
+                    {demoAtivo ? (
+                      <>
+                        <p className="mt-3 text-xs text-white/60">Ranking indisponível no modo de demonstração.</p>
+                        <button
+                          type="button"
+                          className="mt-5 min-h-11 w-full rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
+                          onClick={voltarAoMenu}
+                        >
+                          Voltar ao menu
+                        </button>
+                      </>
+                    ) : (
+                      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          className="min-h-11 flex-1 rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={salvarPontuacao}
+                          disabled={estadoSalvamento === "salvando" || estadoSalvamento === "salvo"}
+                        >
+                          {estadoSalvamento === "salvando" ? "Salvando..." : estadoSalvamento === "salvo" ? "Pontuação salva" : estadoSalvamento === "erro" ? "Tentar novamente" : "Salvar pontuação"}
+                        </button>
+                        <button
+                          type="button"
+                          className="min-h-11 flex-1 rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
+                          onClick={voltarAoMenu}
+                        >
+                          Voltar ao menu
+                        </button>
+                      </div>
+                    )}
+
+                    {estadoSalvamento === "salvo" && !demoAtivo && (
+                      <button
+                        type="button"
+                        className="mt-3 min-h-11 w-full rounded-lg border border-[#FFC93C] px-4 font-semibold text-[#FFC93C] hover:bg-white/10"
+                        onClick={() => navigate("/ranking")}
+                      >
+                        Ver ranking
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

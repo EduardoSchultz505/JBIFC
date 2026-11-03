@@ -1,9 +1,16 @@
-import "dotenv/config";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import pg from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, ".env"), quiet: true });
 
 const { Pool } = pg;
 
@@ -37,12 +44,31 @@ function normalizarUrlPostgres(rawUrl) {
 }
 
 const databaseUrl = normalizarUrlPostgres(process.env.DATABASE_URL);
+const poolConfig = databaseUrl
+  ? (() => {
+      const url = new URL(databaseUrl);
+      url.searchParams.set("sslmode", "require");
+      return {
+        connectionString: url.toString(),
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000,
+        max: 10,
+      };
+    })()
+  : null;
 
-const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-  connectionTimeoutMillis: 10000,
-});
+const pool = poolConfig ? new Pool(poolConfig) : null;
+
+if (databaseUrl && pool) {
+  const url = new URL(databaseUrl);
+  console.info("[Banco] Tentando conectar ao Supabase:", {
+    host: url.hostname,
+    port: url.port || "5432",
+    database: url.pathname.replace("/", "") || "postgres",
+    ssl: true,
+  });
+}
 
 app.use(cors());
 app.use(express.json());
@@ -93,6 +119,18 @@ app.get("/health", async (_req, res) => {
 });
 
 async function iniciarBanco() {
+  if (!pool) {
+    throw new Error("Pool do PostgreSQL não foi inicializado.");
+  }
+
+  const conexao = await pool.query("SELECT NOW() AS agora");
+  console.info("[Banco] Conexão validada com sucesso:", {
+    agora: conexao.rows[0]?.agora,
+    host: new URL(databaseUrl).hostname,
+    port: new URL(databaseUrl).port || "5432",
+    database: new URL(databaseUrl).pathname.replace("/", "") || "postgres",
+  });
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ranking (
       id SERIAL PRIMARY KEY,
