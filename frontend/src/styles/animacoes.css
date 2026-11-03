@@ -1,24 +1,25 @@
-/* Cria as classes animate-carrossel, animate-varredura e animate-piscar */
+
 @theme {
   --animate-carrossel: carrossel 80s linear infinite;
   --animate-varredura: varredura 5s linear infinite;
   --animate-piscar: piscar 1.2s step-end infinite;
-
-  @keyframes carrossel {
-    from { transform: translateX(-50%); }
-    to { transform: translateX(0); }
-  }
-
-  @keyframes varredura {
-    to { transform: translateX(500%); }
-  }
-
-  @keyframes piscar {
-    50% { opacity: 0; }
-  }
 }
 
-/* Linhas de TV antiga sobre o print do jogo */
+
+@keyframes carrossel {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes varredura {
+  to { transform: translateX(500%); }
+}
+
+@keyframes piscar {
+  50% { opacity: 0; }
+}
+
+
 .scanlines {
   background: repeating-linear-gradient(
     to bottom,
@@ -27,7 +28,7 @@
   );
 }
 
-/* Esqueleto do ranking: brilho que atravessa cada barra */
+
 .esqueleto {
   position: relative;
   overflow: hidden;

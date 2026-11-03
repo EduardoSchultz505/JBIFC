@@ -1,4 +1,4 @@
-/* Ponto de entrada: o main.jsx continua importando só este arquivo */
+
 @import "tailwindcss";
 @import "./fontes.css";
 @import "./tema.css";

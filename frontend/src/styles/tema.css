@@ -1,12 +1,9 @@
 @theme {
-  /* fonte */
   --font-sans: "Inter", sans-serif;
 
-  /* pontos de quebra */
   --breakpoint-md: 801px;
   --breakpoint-xs: 421px;
 
-  /* superfícies e texto */
   --color-background: #f5f6f4;
   --color-surface: #ffffff;
   --color-subtle: #fafbf9;
@@ -15,11 +12,9 @@
   --color-faint: #89938d;
   --color-ghost: #dfe3de;
 
-  /* bordas */
   --color-line: #d9ddd7;
   --color-line-strong: #aeb6ae;
 
-  /* marca */
   --color-brand: #1e6b2c;
   --color-brand-hover: #175622;
   --color-brand-soft: #eaf4ec;
@@ -27,19 +22,15 @@
   --color-bright-green: #2f9e41;
   --color-sage: #a8b4aa;
 
-  /* jogo */
   --color-game: #141b1f;
   --color-game-line: #2d383e;
 
-  /* destaque (primeiro lugar) */
   --color-sun: #ffc93c;
   --color-sun-soft: #fff6d6;
   --color-sun-ink: #856300;
 
-  /* rodapé */
   --color-footer: #1f2a30;
 
-  /* sombras */
   --shadow-game: 0 24px 60px rgb(14 27 20 / 15%), 0 4px 14px rgb(14 27 20 / 10%);
   --shadow-play: 0 7px 22px rgb(0 0 0 / 24%);
 }
