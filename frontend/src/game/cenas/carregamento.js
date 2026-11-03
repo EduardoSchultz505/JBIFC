@@ -37,14 +37,15 @@ export default class Carregamento extends Phaser.Scene {
 
     this.load.image("logo", "/game/JBIFC.svg");
     this.load.image("IFC", "/game/IFC.svg");
+    
 
-    this.load.image("nsp-fundo", "/game/nao-seja-pego/tela_principal.png")
-    this.load.image("nsp-cano", "/game/nao-seja-pego/cano.png")
-    this.load.image("nsp-bird", "/game/nao-seja-pego/fap_bird.png")
-    this.load.image("nsp-bird-bg", "/game/nao-seja-pego/fap_bird_bg.png")
-    this.load.image("nsp-guia", "/game/nao-seja-pego/guia_anonima_bg.png")
-    this.load.image("nsp-guilherme1", "/game/nao-seja-pego/guilherme1.png")
-    this.load.image("nsp-guilherme2", "/game/nao-seja-pego/guilherme2.png")
+    this.load.image("nsp-fundo", "/game/nao-seja-pego/tela_principal.svg", { width: 2560, height: 1440 })
+    this.load.image("nsp-cano", "/game/nao-seja-pego/cano.svg")
+    this.load.image("nsp-bird", "/game/nao-seja-pego/fap_bird.svg")
+    this.load.image("nsp-bird-bg", "/game/nao-seja-pego/fap_bird_bg.svg")
+    this.load.image("nsp-guia", "/game/nao-seja-pego/guia_anonima_bg.svg")
+    this.load.image("nsp-guilherme1", "/game/nao-seja-pego/guilherme1.svg")
+    this.load.image("nsp-guilherme2", "/game/nao-seja-pego/guilherme2.svg")
   }
 
   create() {
