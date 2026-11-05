@@ -1,11 +1,8 @@
 import Phaser from "phaser";
 
-
-const TELA = { x: 378, y: 256, w: 388, h: 278 };
-
+const TELA = { x: 368, y: 246, w: 408, h: 304 };
 
 const DEBUG = false;
-
 
 const ESCALA_CANO = 2;
 const LINHA_CORPO = 0.75;
@@ -14,29 +11,26 @@ const TEXTURAS = ["nsp-fundo", "nsp-cano", "nsp-bird", "nsp-bird-bg", "nsp-guia"
 const CANO_ALTO = "nsp-cano-alto";
 
 export default class JogueSemSerPego {
-  instrucao = "VOE E ESCONDA!";
+  instrucao = "ESCONDA!";
   duracao = 9; 
 
   constructor(scene) {
     this.scene = scene;
     this.estado = "jogando";
-
     
     this.tempoVitoria = 8000;
     this.decorrido = 0;
-
     
     this.gravidade = 900;
     this.impulso = -290;
     this.velocidade = 150;
-    this.abertura = 120;
+    this.abertura = 130;
     this.larguraCano = 64; 
     this.intervaloCano = 1300;
     this.proximoCano = 600;
     this.passaroX = TELA.x + 70;
     this.vy = this.impulso; 
     this.canos = [];
-
     
     this.fase = "livre";
     this.cronometro = 0;
@@ -49,39 +43,38 @@ export default class JogueSemSerPego {
   iniciar() {
     const { width, height } = this.scene.scale;
     const add = this.scene.add;
-
     
-    TEXTURAS.forEach((chave) => this.scene.textures.get(chave).setFilter(Phaser.Textures.FilterMode.NEAREST));
-
+    TEXTURAS.filter((chave) => this.scene.textures.exists(chave)).forEach((chave) =>
+      this.scene.textures.get(chave).setFilter(Phaser.Textures.FilterMode.NEAREST)
+    );
     this.montarCano();
-
     
     this.camera = this.scene.cameras.add(TELA.x, TELA.y, TELA.w, TELA.h);
     this.camera.setScroll(TELA.x, TELA.y);
-
     
     this.fundo = add.image(width / 2, height / 2, "nsp-fundo").setDisplaySize(width, height).setDepth(0);
     this.fundoTela = this.soNoFlappy(
       add.image(TELA.x + TELA.w / 2, TELA.y + TELA.h / 2, "nsp-bird-bg").setDisplaySize(TELA.w, TELA.h).setDepth(1)
     );
-
     this.passaro = this.soNoFlappy(add.image(this.passaroX, TELA.y + TELA.h / 2, "nsp-bird").setDepth(3));
-    this.ajustarAltura(this.passaro, 34);
-
+    this.ajustarAltura(this.passaro, 40);
     
     this.guia = add
       .image(TELA.x + TELA.w / 2, TELA.y + TELA.h / 2, "nsp-guia")
       .setDisplaySize(TELA.w, TELA.h)
       .setDepth(4)
       .setVisible(false);
-
+    
+    
+    this.moldura = this.soNoFlappy(
+      add.image(width / 2, height / 2, "nsp-fundo").setDisplaySize(width, height).setDepth(4.5)
+    );
     
     const px = width * 0.82;
     this.prof1 = add.image(px, height - 10, "nsp-guilherme1").setOrigin(0.5, 1).setDepth(5).setVisible(false);
     this.prof2 = add.image(px, height - 10, "nsp-guilherme2").setOrigin(0.5, 1).setDepth(5).setVisible(false);
     this.ajustarAltura(this.prof1, 520);
     this.ajustarAltura(this.prof2, 520);
-
     
     const bx = TELA.x + TELA.w / 2;
     const by = height - 40;
@@ -94,19 +87,16 @@ export default class JogueSemSerPego {
       .text(bx, by, "ALT TAB (E)", { fontFamily: "Arial", fontSize: "20px", fontStyle: "bold", color: "#1f2a30" })
       .setOrigin(0.5)
       .setDepth(7);
-
     this.aviso = add
       .text(width / 2, 70, "", { fontFamily: "Arial", fontSize: "48px", fontStyle: "bold", color: "#cd191e" })
       .setOrigin(0.5)
       .setDepth(8);
-
     if (DEBUG) {
       this.contorno = add
         .rectangle(TELA.x + TELA.w / 2, TELA.y + TELA.h / 2, TELA.w, TELA.h)
         .setStrokeStyle(2, 0xff0000)
         .setDepth(20);
     }
-
     
     this.aoPular = () => this.pular();
     this.aoAba = () => this.alternarAba();
@@ -116,25 +106,20 @@ export default class JogueSemSerPego {
     };
     this.scene.input.on("pointerdown", this.aoToque);
     this.botao.on("pointerdown", this.aoAba);
-
     const teclado = this.scene.input.keyboard;
     this.teclaEspaco = teclado?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.teclaE = teclado?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
     this.teclaEspaco?.on("down", this.aoPular);
     this.teclaE?.on("down", this.aoAba);
-
     this.aoAtualizar = () => this.quadro();
     this.scene.events.on("update", this.aoAtualizar);
   }
-
   atualizar() {}
-
   
   soNoFlappy(objeto) {
     this.scene.cameras.main.ignore(objeto);
     return objeto;
   }
-
   
   montarCano() {
     const fonte = this.scene.textures.get("nsp-cano").getSourceImage();
@@ -142,7 +127,6 @@ export default class JogueSemSerPego {
     const h = fonte.height;
     this.larguraCano = w * ESCALA_CANO;
     if (this.scene.textures.exists(CANO_ALTO)) return;
-
     const altura = Math.max(h, Math.ceil(TELA.h / ESCALA_CANO));
     const textura = this.scene.textures.createCanvas(CANO_ALTO, w, altura);
     const ctx = textura.getContext();
@@ -155,38 +139,31 @@ export default class JogueSemSerPego {
     textura.refresh();
     textura.setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
-
   ajustarAltura(img, altura) {
     img.setScale(altura / img.height);
   }
-
   pular() {
     if (this.estado !== "jogando" || this.escondido) return;
     this.vy = this.impulso;
   }
-
   
   alternarAba() {
     if (this.estado !== "jogando" || this.fase === "livre") return;
     this.escondido = !this.escondido;
     this.guia.setVisible(this.escondido);
   }
-
   quadro() {
     if (this.estado !== "jogando") return;
     const delta = this.scene.game.loop.delta;
     this.decorrido += delta;
     this.cronometro += delta;
-
     this.atualizarProfessor();
     if (this.estado !== "jogando") return;
-
     if (!this.escondido) this.atualizarFlappy(Math.min(delta, 50) / 1000);
     if (this.estado === "jogando" && this.decorrido >= this.tempoVitoria) {
       this.estado = "ganhou";
     }
   }
-
   atualizarProfessor() {
     if (this.fase === "livre" && this.cronometro >= this.espera) {
       this.fase = "chegando";
@@ -214,13 +191,11 @@ export default class JogueSemSerPego {
       }
     }
   }
-
   atualizarFlappy(dt) {
     
     this.vy += this.gravidade * dt;
     this.passaro.y += this.vy * dt;
     this.passaro.rotation = Phaser.Math.Clamp(this.vy / 600, -0.4, 0.8);
-
     const meioAltura = this.passaro.displayHeight / 2;
     if (this.passaro.y - meioAltura <= TELA.y) {
       this.passaro.y = TELA.y + meioAltura;
@@ -230,22 +205,18 @@ export default class JogueSemSerPego {
       this.perder("BATEU!");
       return;
     }
-
     
     this.proximoCano -= dt * 1000;
     if (this.proximoCano <= 0) {
       this.criarCano();
       this.proximoCano = this.intervaloCano;
     }
-
     const bw = this.passaro.displayWidth * 0.7;
     const bh = this.passaro.displayHeight * 0.7;
-
     for (const cano of this.canos) {
       cano.x -= this.velocidade * dt;
       cano.topo.x = cano.x;
       cano.baixo.x = cano.x;
-
       const alinhado = Math.abs(this.passaro.x - cano.x) < (bw + this.larguraCano) / 2;
       const foraDaAbertura = this.passaro.y - bh / 2 < cano.gapTop || this.passaro.y + bh / 2 > cano.gapBottom;
       if (alinhado && foraDaAbertura) {
@@ -253,7 +224,6 @@ export default class JogueSemSerPego {
         return;
       }
     }
-
     
     this.canos = this.canos.filter((cano) => {
       if (cano.x > TELA.x - this.larguraCano) return true;
@@ -262,7 +232,6 @@ export default class JogueSemSerPego {
       return false;
     });
   }
-
   criarCano() {
     const metade = this.abertura / 2;
     const centro = Phaser.Math.Between(TELA.y + 40 + metade, TELA.y + TELA.h - 40 - metade);
@@ -270,7 +239,6 @@ export default class JogueSemSerPego {
     const gapTop = centro - metade;
     const gapBottom = centro + metade;
     const add = this.scene.add;
-
     
     const topo = this.soNoFlappy(
       add.image(x, gapTop, CANO_ALTO).setOrigin(0.5, 1).setFlipY(true).setScale(ESCALA_CANO).setDepth(2)
@@ -278,19 +246,15 @@ export default class JogueSemSerPego {
     const baixo = this.soNoFlappy(
       add.image(x, gapBottom, CANO_ALTO).setOrigin(0.5, 0).setScale(ESCALA_CANO).setDepth(2)
     );
-
     this.canos.push({ x, gapTop, gapBottom, topo, baixo });
   }
-
   perder(mensagem) {
     this.estado = "perdeu";
     this.aviso.setText(mensagem);
   }
-
   resultado() {
     return this.estado;
   }
-
   destruir() {
     this.scene.events.off("update", this.aoAtualizar);
     this.scene.input.off("pointerdown", this.aoToque);
@@ -300,13 +264,11 @@ export default class JogueSemSerPego {
     const teclado = this.scene.input.keyboard;
     if (this.teclaEspaco) teclado?.removeKey(this.teclaEspaco);
     if (this.teclaE) teclado?.removeKey(this.teclaE);
-
     this.canos.forEach((c) => {
       c.topo.destroy();
       c.baixo.destroy();
     });
     this.canos = [];
-
     [
       this.fundo,
       this.fundoTela,
@@ -317,9 +279,9 @@ export default class JogueSemSerPego {
       this.botao,
       this.botaoTexto,
       this.aviso,
+      this.moldura,
       this.contorno,
     ].forEach((o) => o?.destroy());
-
     if (this.camera) this.scene.cameras.remove(this.camera);
   }
 }
