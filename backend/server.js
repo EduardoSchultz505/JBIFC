@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
-import pg from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -12,69 +11,66 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, ".env"), quiet: true });
 
-const { Pool } = pg;
-
 const app = express();
 const PORT = process.env.PORT || 5000;
+const SUPABASE_URL = process.env.SUPABASE_URL?.replace(/\/$/, "");
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim();
+const JWT_SECRET = process.env.JWT_SECRET?.trim();
+const JWT_EXPIRACAO = process.env.JWT_EXPIRACAO || "7d";
 
-function normalizarUrlPostgres(rawUrl) {
-  const url = rawUrl?.trim();
-  if (!url) return null;
+function buildSupabaseHeaders({ useServiceRole = true } = {}) {
+  const apiKey = useServiceRole
+    ? SUPABASE_SERVICE_ROLE_KEY
+    : SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
 
-  const separador = url.indexOf("://");
-  const ultimoArroba = url.lastIndexOf("@");
-  if (separador < 0 || ultimoArroba < 0) return url;
-
-  const prefixo = url.slice(0, separador + 3);
-  const autenticacao = url.slice(separador + 3, ultimoArroba);
-  const separadorSenha = autenticacao.indexOf(":");
-  if (separadorSenha < 0) return url;
-
-  const usuario = autenticacao.slice(0, separadorSenha);
-  const senhaOriginal = autenticacao.slice(separadorSenha + 1);
-  let senhaCodificada = senhaOriginal;
-
-  try {
-    senhaCodificada = encodeURIComponent(decodeURIComponent(senhaOriginal));
-  } catch {
-    senhaCodificada = encodeURIComponent(senhaOriginal);
+  if (!apiKey) {
+    throw new Error("Chave do Supabase não configurada. Defina SUPABASE_SERVICE_ROLE_KEY (backend) e SUPABASE_ANON_KEY (opcional) em .env.");
   }
 
-  return `${prefixo}${usuario}:${senhaCodificada}${url.slice(ultimoArroba)}`;
+  return {
+    "Content-Type": "application/json",
+    apikey: apiKey,
+    Authorization: `Bearer ${apiKey}`,
+    Prefer: "return=representation",
+  };
 }
 
-const databaseUrl = normalizarUrlPostgres(process.env.DATABASE_URL);
-const poolConfig = databaseUrl
-  ? (() => {
-      const url = new URL(databaseUrl);
-      url.searchParams.set("sslmode", "require");
-      return {
-        connectionString: url.toString(),
-        ssl: { rejectUnauthorized: false },
-        connectionTimeoutMillis: 10000,
-        idleTimeoutMillis: 30000,
-        max: 10,
-      };
-    })()
-  : null;
+async function supabaseFetch(table, { method = "GET", query = "", body = null, useServiceRole = true } = {}) {
+  if (!SUPABASE_URL) {
+    throw new Error("SUPABASE_URL não configurada.");
+  }
 
-const pool = poolConfig ? new Pool(poolConfig) : null;
-
-if (databaseUrl && pool) {
-  const url = new URL(databaseUrl);
-  console.info("[Banco] Tentando conectar ao Supabase:", {
-    host: url.hostname,
-    port: url.port || "5432",
-    database: url.pathname.replace("/", "") || "postgres",
-    ssl: true,
+  const url = query ? `${SUPABASE_URL}/rest/v1/${table}?${query}` : `${SUPABASE_URL}/rest/v1/${table}`;
+  const response = await fetch(url, {
+    method,
+    headers: buildSupabaseHeaders({ useServiceRole }),
+    body: body === null || body === undefined ? undefined : JSON.stringify(body),
   });
+
+  const texto = await response.text();
+  let payload = null;
+
+  if (texto) {
+    try {
+      payload = JSON.parse(texto);
+    } catch {
+      payload = texto;
+    }
+  }
+
+  if (!response.ok) {
+    const mensagem = typeof payload === "object" && payload !== null
+      ? payload.message || payload.error || JSON.stringify(payload)
+      : payload || "Erro ao acessar o Supabase.";
+    throw new Error(`Supabase ${table}: ${mensagem}`);
+  }
+
+  return payload;
 }
 
 app.use(cors());
 app.use(express.json());
-
-const JWT_SECRET = process.env.JWT_SECRET?.trim();
-const JWT_EXPIRACAO = process.env.JWT_EXPIRACAO || "7d";
 
 function validarUsuarioESenha(usuario, senha) {
   if (typeof usuario !== "string") return "Informe um nome de usuário válido.";
@@ -108,64 +104,27 @@ function autenticar(req, res, next) {
   }
 }
 
+async function validarConfiguracaoSupabase() {
+  if (!SUPABASE_URL) {
+    throw new Error("SUPABASE_URL não está configurada.");
+  }
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY não está configurada.");
+  }
+
+  await supabaseFetch("jogadores", { query: "select=id&limit=1" });
+  console.info("[Banco] Conexão HTTPS com o Supabase validada com sucesso.");
+}
+
 app.get("/health", async (_req, res) => {
   try {
-    const resultado = await pool.query("SELECT NOW() AS agora");
-    res.json({ banco: "conectado", agora: resultado.rows[0].agora });
+    const resultado = await supabaseFetch("jogadores", { query: "select=id&limit=1" });
+    res.json({ banco: "conectado", rows: resultado?.length ?? 0 });
   } catch (err) {
     console.error("[Banco] Falha na verificação de saúde:", err);
     res.status(503).json({ banco: "indisponível", erro: err.message });
   }
 });
-
-async function iniciarBanco() {
-  if (!pool) {
-    throw new Error("Pool do PostgreSQL não foi inicializado.");
-  }
-
-  const conexao = await pool.query("SELECT NOW() AS agora");
-  console.info("[Banco] Conexão validada com sucesso:", {
-    agora: conexao.rows[0]?.agora,
-    host: new URL(databaseUrl).hostname,
-    port: new URL(databaseUrl).port || "5432",
-    database: new URL(databaseUrl).pathname.replace("/", "") || "postgres",
-  });
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS ranking (
-      id SERIAL PRIMARY KEY,
-      usuario VARCHAR(50) NOT NULL,
-      pontuacao DOUBLE PRECISION NOT NULL CHECK (pontuacao >= 0),
-      nivel INTEGER NOT NULL CHECK (nivel >= 0),
-      data TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS ranking_usuario_unico
-    ON ranking (LOWER(usuario));
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS jogadores (
-      id SERIAL PRIMARY KEY,
-      usuario VARCHAR(20) NOT NULL,
-      senha_hash VARCHAR(100) NOT NULL,
-      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS jogadores_usuario_unico
-    ON jogadores (LOWER(usuario));
-  `);
-  await pool.query(`
-    ALTER TABLE ranking ADD COLUMN IF NOT EXISTS jogador_id INTEGER
-    REFERENCES jogadores(id) ON DELETE CASCADE;
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS ranking_jogador_unico
-    ON ranking (jogador_id)
-    WHERE jogador_id IS NOT NULL;
-  `);
-}
 
 app.post("/api/conta", async (req, res) => {
   const usuario = typeof req.body?.usuario === "string" ? req.body.usuario.trim() : "";
@@ -174,29 +133,29 @@ app.post("/api/conta", async (req, res) => {
   if (erro) return res.status(400).json({ erro });
 
   try {
-    const existente = await pool.query(
-      "SELECT id FROM jogadores WHERE LOWER(usuario) = LOWER($1)",
-      [usuario],
-    );
-    if (existente.rowCount > 0) {
+    const existente = await supabaseFetch("jogadores", {
+      query: `select=id&usuario=ilike.${encodeURIComponent(usuario)}`,
+    });
+
+    if (Array.isArray(existente) && existente.length > 0) {
       return res.status(409).json({ erro: "Este nome de usuário já está em uso." });
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
-    const { rows } = await pool.query(
-      `INSERT INTO jogadores (usuario, senha_hash)
-       VALUES ($1, $2)
-       RETURNING id, usuario`,
-      [usuario, senhaHash],
-    );
-    const jogador = rows[0];
+    const rows = await supabaseFetch("jogadores", {
+      method: "POST",
+      body: { usuario, senha_hash: senhaHash },
+    });
+
+    const jogador = Array.isArray(rows) ? rows[0] : rows;
     res.status(201).json({
       id: jogador.id,
       usuario: jogador.usuario,
       token: criarToken(jogador.id, jogador.usuario),
     });
   } catch (err) {
-    if (err.code === "23505") {
+    const mensagem = err.message || "Erro ao criar a conta.";
+    if (mensagem.includes("duplicate") || mensagem.includes("already")) {
       return res.status(409).json({ erro: "Este nome de usuário já está em uso." });
     }
     console.error("[Conta] Erro ao criar conta:", err);
@@ -213,14 +172,11 @@ app.post("/api/login", async (req, res) => {
   }
 
   try {
-    const { rows } = await pool.query(
-      "SELECT id, usuario, senha_hash FROM jogadores WHERE LOWER(usuario) = LOWER($1)",
-      [usuario],
-    );
-    const jogador = rows[0];
-    const senhaCorreta = jogador
-      ? await bcrypt.compare(senha, jogador.senha_hash)
-      : false;
+    const rows = await supabaseFetch("jogadores", {
+      query: `select=id,usuario,senha_hash&usuario=ilike.${encodeURIComponent(usuario)}`,
+    });
+    const jogador = Array.isArray(rows) ? rows[0] : null;
+    const senhaCorreta = jogador ? await bcrypt.compare(senha, jogador.senha_hash) : false;
 
     if (!jogador || !senhaCorreta) {
       return res.status(401).json({ erro: "Nome de usuário ou senha incorretos." });
@@ -239,13 +195,14 @@ app.post("/api/login", async (req, res) => {
 
 app.get("/api/usuario", autenticar, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      "SELECT id, usuario FROM jogadores WHERE id = $1",
-      [req.usuario.id],
-    );
-    if (rows.length === 0) {
+    const rows = await supabaseFetch("jogadores", {
+      query: `select=id,usuario&id=eq.${req.usuario.id}`,
+    });
+
+    if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(401).json({ erro: "Conta não encontrada. Entre novamente." });
     }
+
     res.json({ id: rows[0].id, usuario: rows[0].usuario });
   } catch (err) {
     console.error("[Conta] Erro ao verificar sessão:", err);
@@ -257,19 +214,20 @@ app.get("/ranking", async (req, res) => {
   try {
     const limite = parseInt(req.query.limite, 10);
     const usaLimite = Number.isInteger(limite) && limite > 0;
+    const rows = await supabaseFetch("ranking", {
+      query: "select=id,jogador_id,usuario,pontuacao,nivel,data&order=pontuacao.desc,nivel.desc,data.asc",
+    });
 
-    const { rows } = await pool.query(
-      `SELECT ROW_NUMBER() OVER (ORDER BY pontuacao DESC, nivel DESC, data ASC)::int AS posicao,
-      usuario, pontuacao, nivel
-      FROM ranking
-      ORDER BY posicao
-      ${usaLimite ? "LIMIT $1" : ""}`,
-      usaLimite ? [limite] : [],
-    );
+    const ranking = (Array.isArray(rows) ? rows : []).map((jogador, index) => ({
+      posicao: index + 1,
+      usuario: jogador.usuario,
+      pontuacao: Number(jogador.pontuacao),
+      nivel: Number(jogador.nivel ?? 0),
+    }));
 
-    res.json(rows);
+    res.json(usaLimite ? ranking.slice(0, limite) : ranking);
   } catch (err) {
-    console.error(err);
+    console.error("[Ranking] Erro ao buscar o ranking:", err);
     res.status(500).json({ erro: "Erro ao buscar o ranking." });
   }
 });
@@ -289,112 +247,106 @@ app.post("/ranking", autenticar, async (req, res) => {
     return res.status(403).json({ erro: "O jogador enviado não corresponde à sessão autenticada." });
   }
   if (!Number.isInteger(pontuacao) || pontuacao < 0 || pontuacao > 2147483647) {
-    return res.status(400).json({
-      erro: "A pontuação deve ser um inteiro não negativo.",
-    });
+    return res.status(400).json({ erro: "A pontuação deve ser um inteiro não negativo." });
   }
   if (!Number.isInteger(nivelValido) || nivelValido < 0) {
-    return res.status(400).json({
-      erro: "O campo 'nivel' deve ser um inteiro maior ou igual a 0.",
-    });
+    return res.status(400).json({ erro: "O campo 'nivel' deve ser um inteiro maior ou igual a 0." });
   }
 
   try {
-    const { rows: jogadores } = await pool.query(
-      "SELECT id, usuario FROM jogadores WHERE id = $1",
-      [req.usuario.id],
-    );
-    if (jogadores.length === 0) {
+    const jogadores = await supabaseFetch("jogadores", {
+      query: `select=id,usuario&id=eq.${req.usuario.id}`,
+    });
+    const jogador = Array.isArray(jogadores) && jogadores.length > 0 ? jogadores[0] : null;
+
+    if (!jogador) {
       return res.status(401).json({ erro: "Conta não encontrada. Entre novamente." });
     }
-    const jogador = jogadores[0];
 
-    const atual = await pool.query(
-      "SELECT pontuacao FROM ranking WHERE jogador_id = $1",
-      [jogador.id],
-    );
+    const atual = await supabaseFetch("ranking", {
+      query: `select=id,jogador_id,usuario,pontuacao,nivel,data&jogador_id=eq.${jogador.id}`,
+    });
+
     let registro;
-    if (atual.rowCount === 0) {
-      const legado = await pool.query(
-        "SELECT id FROM ranking WHERE jogador_id IS NULL AND LOWER(usuario) = LOWER($1)",
-        [jogador.usuario],
-      );
-      if (legado.rowCount > 0) {
-        await pool.query(
-          "UPDATE ranking SET jogador_id = $1 WHERE id = $2",
-          [jogador.id, legado.rows[0].id],
-        );
-        const atualLegado = await pool.query(
-          "SELECT pontuacao FROM ranking WHERE jogador_id = $1",
-          [jogador.id],
-        );
-        if (pontuacao > atualLegado.rows[0].pontuacao) {
-          const atualizado = await pool.query(
-            `UPDATE ranking SET pontuacao = $2, nivel = $3, usuario = $4
-             WHERE jogador_id = $1 RETURNING pontuacao, usuario`,
-            [jogador.id, pontuacao, nivelValido, jogador.usuario],
-          );
-          registro = atualizado.rows[0];
+    if (!Array.isArray(atual) || atual.length === 0) {
+      const legado = await supabaseFetch("ranking", {
+        query: `select=id,usuario,pontuacao&usuario=ilike.${encodeURIComponent(jogador.usuario)}`,
+      });
+
+      if (Array.isArray(legado) && legado.length > 0) {
+        const registroLegado = legado[0];
+        const atualLegado = await supabaseFetch("ranking", {
+          query: `select=id,pontuacao,usuario,data&jogador_id=eq.${jogador.id}`,
+        });
+
+        if (pontuacao > Number((Array.isArray(atualLegado) && atualLegado[0]) ? atualLegado[0].pontuacao : 0)) {
+          const atualizado = await supabaseFetch("ranking", {
+            method: "PATCH",
+            query: `id=eq.${registroLegado.id}`,
+            body: {
+              jogador_id: jogador.id,
+              usuario: jogador.usuario,
+              pontuacao,
+              nivel: nivelValido,
+              data: new Date().toISOString(),
+            },
+          });
+          registro = Array.isArray(atualizado) ? atualizado[0] : atualizado;
         } else {
-          registro = atualLegado.rows.length
-            ? { pontuacao: atualLegado.rows[0].pontuacao, usuario: jogador.usuario }
-            : null;
+          registro = Array.isArray(atualLegado) && atualLegado.length > 0 ? atualLegado[0] : registroLegado;
         }
       } else {
-      const inserido = await pool.query(
-        `INSERT INTO ranking (jogador_id, usuario, pontuacao, nivel, data)
-         VALUES ($1, $2, $3, $4, NOW())
-         RETURNING pontuacao, usuario`,
-        [jogador.id, jogador.usuario, pontuacao, nivelValido],
-      );
-      registro = inserido.rows[0];
+        const inserido = await supabaseFetch("ranking", {
+          method: "POST",
+          body: {
+            jogador_id: jogador.id,
+            usuario: jogador.usuario,
+            pontuacao,
+            nivel: nivelValido,
+            data: new Date().toISOString(),
+          },
+        });
+        registro = Array.isArray(inserido) ? inserido[0] : inserido;
       }
-    } else if (pontuacao > atual.rows[0].pontuacao) {
-      const atualizado = await pool.query(
-        `UPDATE ranking
-         SET pontuacao = $2, nivel = $3, usuario = $4
-         WHERE jogador_id = $1
-         RETURNING pontuacao, usuario`,
-        [jogador.id, pontuacao, nivelValido, jogador.usuario],
-      );
-      registro = atualizado.rows[0];
+    } else if (pontuacao > Number(atual[0].pontuacao)) {
+      const atualizado = await supabaseFetch("ranking", {
+        method: "PATCH",
+        query: `jogador_id=eq.${jogador.id}`,
+        body: {
+          usuario: jogador.usuario,
+          pontuacao,
+          nivel: nivelValido,
+          data: new Date().toISOString(),
+        },
+      });
+      registro = Array.isArray(atualizado) ? atualizado[0] : atualizado;
     } else {
-      const mantido = await pool.query(
-        "SELECT pontuacao, usuario FROM ranking WHERE jogador_id = $1",
-        [jogador.id],
-      );
-      registro = mantido.rows[0];
+      registro = atual[0];
     }
-    const { rows: registroAtual } = await pool.query(
-      "SELECT data FROM ranking WHERE jogador_id = $1",
-      [jogador.id],
-    );
-    const { rows } = await pool.query(
-      `SELECT COUNT(*)::int + 1 AS posicao
-       FROM ranking
-       WHERE pontuacao > $1
-          OR (pontuacao = $1 AND data < $2)`,
-      [registro.pontuacao, registroAtual[0].data],
-    );
 
-    const { rows: confirmado } = await pool.query(
-      `SELECT jogador_id, usuario, pontuacao, nivel, data
-       FROM ranking WHERE jogador_id = $1`,
-      [jogador.id],
-    );
-    console.info("[Supabase] Resultado confirmado:", confirmado[0] ?? null);
+    const todos = await supabaseFetch("ranking", {
+      query: "select=id,jogador_id,usuario,pontuacao,nivel,data&order=pontuacao.desc,nivel.desc,data.asc",
+    });
+
+    const ranking = Array.isArray(todos) ? todos : [];
+    const posicao = ranking.findIndex((item) => item.jogador_id === jogador.id) + 1;
+
     console.info("[Ranking] Operação concluída:", {
       jogadorId: jogador.id,
       jogadorNome: jogador.usuario,
       pontuacaoRecebida: pontuacao,
-      melhorPontuacao: registro.pontuacao,
-      posicao: rows[0].posicao,
+      melhorPontuacao: registro?.pontuacao,
+      posicao,
     });
 
     res.status(201).json({
       mensagem: "Pontuação registrada.",
-      posicao: rows[0].posicao,
-      registro,
+      posicao,
+      registro: {
+        usuario: registro?.usuario ?? jogador.usuario,
+        pontuacao: Number(registro?.pontuacao ?? 0),
+        nivel: Number(registro?.nivel ?? nivelValido),
+      },
     });
   } catch (err) {
     console.error("Erro ao salvar pontuação no ranking:", err);
@@ -402,23 +354,18 @@ app.post("/ranking", autenticar, async (req, res) => {
   }
 });
 
-if (!databaseUrl) {
-  console.error("[Banco] DATABASE_URL não está configurada. Defina a variável antes de iniciar o servidor.");
-  process.exit(1);
-}
 if (!JWT_SECRET) {
   console.error("[Auth] JWT_SECRET não está configurada. Defina a variável antes de iniciar o servidor.");
   process.exit(1);
 }
 
-iniciarBanco()
+validarConfiguracaoSupabase()
   .then(() => {
-    console.info("[Banco] Tabela ranking inicializada.");
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
-    console.error("Falha ao conectar/iniciar o banco:", err);
+    console.error("Falha ao conectar ao Supabase sobre HTTPS:", err);
     process.exit(1);
   });
