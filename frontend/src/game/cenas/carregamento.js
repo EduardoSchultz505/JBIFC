@@ -46,6 +46,7 @@ export default class Carregamento extends Phaser.Scene {
     this.load.image("nsp-guia", "/game/nao-seja-pego/guia_anonima_bg.svg")
     this.load.image("nsp-guilherme1", "/game/nao-seja-pego/guilherme1.svg")
     this.load.image("nsp-guilherme2", "/game/nao-seja-pego/guilherme2.svg")
+    this.load.image("nsp-computador", "/game/nao-seja-pego/computador.svg")
   }
 
   create() {
