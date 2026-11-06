@@ -1,6 +1,3 @@
--- Schema base para o JBIFC usando Supabase.
--- Execute este SQL no SQL Editor do Supabase antes de iniciar o backend em produção.
-
 create table if not exists public.jogadores (
   id serial primary key,
   usuario varchar(20) not null,
@@ -47,20 +44,3 @@ for select using (true);
 create policy "jogadores_insercao_publica"
 on public.jogadores
 for insert with check (true);
-
--- Observação:
--- Se você migrar para o Supabase Auth nativo, o ideal é que o campo id da tabela public.jogadores
--- coincida com o auth.uid() do usuário autenticado, e as políticas abaixo devem substituir as regras acima.
---
--- create policy "jogadores_proprio" on public.jogadores
--- for select using (id = auth.uid());
---
--- create policy "ranking_proprio" on public.ranking
--- for select using (jogador_id = auth.uid());
---
--- create policy "ranking_update_proprio" on public.ranking
--- for update using (jogador_id = auth.uid())
--- with check (jogador_id = auth.uid());
-
--- O backend continua a usar o service_role_key em ambiente do servidor para evitar a porta 5432,
--- porém o frontend nunca recebe a service_role_key nem qualquer credencial privada.
