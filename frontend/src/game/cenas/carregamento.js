@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 
+const FONTES = ['16px "PressStart2P"', '16px "Inter"'];
+
 export default class Carregamento extends Phaser.Scene {
   constructor() {
     super("Carregamento");
@@ -47,12 +49,25 @@ export default class Carregamento extends Phaser.Scene {
     this.load.image("nsp-guilherme1", "/game/nao-seja-pego/guilherme1.svg")
     this.load.image("nsp-guilherme2", "/game/nao-seja-pego/guilherme2.svg")
     this.load.image("nsp-computador", "/game/nao-seja-pego/computador.svg")
+
+    this.load.image("lock-fuca1", "/game/lockpick/fuca_porco1.svg")
+    this.load.image("lock-fuca2", "/game/lockpick/fuca_porco2.svg")
+    this.load.image("lock-lockpick1", "/game/lockpick/lockpick1.svg")
+    this.load.image("lock-lockpick2", "/game/lockpick/lockpick2.svg")
+    this.load.image("lock-lockpick3", "/game/lockpick/lockpick3.svg")
+    this.load.image("lock-lockpick4", "/game/lockpick/lockpick4.svg")
+    this.load.image("lock-lockpick5", "/game/lockpick/lockpick5.svg")
+    this.load.image("lock-lockpick6", "/game/lockpick/lockpick6.svg")
+    this.load.image("lock-porco1", "/game/lockpick/porco_corpo1.svg")
+    this.load.image("lock-porco2", "/game/lockpick/porco_corpo2.svg")
+    this.load.image("lock-portao", "/game/lockpick/portao.svg")
   }
 
   create() {
-    document.fonts
-      .load("16px PressStart2P")
-      .then(() => this.scene.start("Opening"));
-    this.scene.start("Opening");
+    
+    Promise.allSettled(FONTES.map((f) => document.fonts.load(f))).then(() => {
+      
+      if (this.sys.isActive()) this.scene.start("Opening");
+    });
   }
 }
