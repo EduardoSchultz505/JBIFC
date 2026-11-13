@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize, CirclePlay } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router";
 import { criarJogo } from "../game/loadGame";
 import { isDemoModeAtivo, setDemoModeAtivo } from "../config/demoMode";
+import {
+  evaluateAchievementUnlocks,
+  readAchievementList,
+  readPartidasTotais,
+  writeAchievementList,
+  writePartidasTotais,
+} from "../config/achievements";
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 const API_URL_LOCAL = import.meta.env.DEV
@@ -22,9 +29,13 @@ export default function Jogar() {
   const [nome, setNome] = useState("");
   const [senha, setSenha] = useState("");
   const [modoAuth, setModoAuth] = useState("login");
-  const [authCarregando, setAuthCarregando] = useState(true);
-  const [authErro, setAuthErro] = useState("");
+  const [authCarregando, setAuthCarregando] = useState(() => Boolean(localStorage.getItem("jbifc_token")) && Boolean(API_URL_LOCAL));
+  const [authErro, setAuthErro] = useState(() => {
+    const tokenInicial = localStorage.getItem("jbifc_token");
+    return tokenInicial && !API_URL_LOCAL ? "VITE_API_URL não está configurada." : "";
+  });
   const [demoAtivo, setDemoAtivo] = useState(() => isDemoModeAtivo());
+  const [conquistasNovas, setConquistasNovas] = useState([]);
   const navigate = useNavigate();
 
   const containerRef = useRef(null);
@@ -40,20 +51,8 @@ export default function Jogar() {
   }, [demoAtivo]);
 
   useEffect(() => {
-    if (!token) {
-      setAuthCarregando(false);
-      return;
-    }
-    if (!API_URL_LOCAL) {
-      setAuthErro("VITE_API_URL não está configurada.");
-      setAuthCarregando(false);
-      return;
-    }
-    if (!token) {
-      setEstadoSalvamento("erro");
-      setMensagem("Faça login novamente para salvar a pontuação.");
-      return;
-    }
+    if (!token) return;
+    if (!API_URL_LOCAL) return;
 
     axios.get(`${API_URL_LOCAL}/api/usuario`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -75,105 +74,53 @@ export default function Jogar() {
     }).finally(() => setAuthCarregando(false));
   }, [token]);
 
-  useEffect(() => {
-    if (!iniciado || !containerRef.current) return;
+  const getContextoPersistencia = useCallback(() => {
+    const jogadorIdAtual = jogadorId || jogadorIdRef.current;
 
-    let cancelado = false;
-    let jogo = null;
+    if (demoAtivo || !tokenRef.current || !jogadorIdAtual) {
+      return { userId: null, demoMode: true };
+    }
 
-    async function iniciarJogo() {
+    return { userId: jogadorIdAtual, demoMode: false };
+  }, [demoAtivo, jogadorId]);
+
+  const processarConquistasPartida = useCallback(async (resumoFinal) => {
+    const contexto = getContextoPersistencia();
+    const existentes = readAchievementList(contexto);
+    const partidasTotaisAntes = readPartidasTotais(contexto);
+    const partidasTotaisDepois = partidasTotaisAntes + 1;
+    const novas = evaluateAchievementUnlocks({
+      ...resumoFinal,
+      partidasTotaisApos: partidasTotaisDepois,
+    }, existentes);
+
+    const todas = [...existentes, ...novas];
+    writeAchievementList(todas, contexto);
+    writePartidasTotais(partidasTotaisDepois, contexto);
+    setConquistasNovas(novas);
+
+    if (!contexto.demoMode && tokenRef.current && jogadorIdRef.current && novas.length > 0) {
       try {
-        if (document.fonts) {
-          await document.fonts.load('16px "PressStart2P"');
-          await document.fonts.ready;
-        }
-
-        if (cancelado || !containerRef.current) return;
-
-        jogo = criarJogo(containerRef.current);
-        jogoRef.current = jogo;
-
-        const aoTerminarPartida = (pontuacaoFinal) => {
-          if (cancelado) return;
-          const pontuacaoExata = Number(pontuacaoFinal);
-          console.info("[GameOver] Jogador conectado:", {
-            jogadorId: jogadorIdRef.current,
-            nome: usuarioRef.current,
-          });
-          console.info("[GameOver] Pontuação capturada no Phaser:", {
-            pontuacaoFinal: pontuacaoExata,
-          });
-          salvamentoEmAndamentoRef.current = false;
-          pontuacaoSalvaRef.current = false;
-          setEstadoSalvamento("idle");
-          setMensagem("");
-          setGameOver(pontuacaoExata);
-          salvarPontuacao(pontuacaoExata);
-        };
-
-        jogo.events.on("fim-de-partida", aoTerminarPartida);
-
-        const atualizarTelaCheia = () => {
-          if (!jogo || cancelado) return;
-
-          setTelaCheia(jogo.scale.isFullscreen);
-
-          requestAnimationFrame(() => {
-            if (!cancelado && jogo) {
-              jogo.scale.refresh();
-            }
-          });
-        };
-
-        jogo.scale.on("enterfullscreen", atualizarTelaCheia);
-        jogo.scale.on("leavefullscreen", atualizarTelaCheia);
-
-        document.addEventListener("fullscreenchange", atualizarTelaCheia);
-
-        jogo.events.once("destroy", () => {
-          document.removeEventListener("fullscreenchange", atualizarTelaCheia);
-          jogo.events.off("fim-de-partida", aoTerminarPartida);
-        });
+        await axios.post(
+          `${API_URL_LOCAL}/api/conquistas`,
+          {
+            conquistas: novas,
+            partidasTotais: partidasTotaisDepois,
+          },
+          {
+            headers: { Authorization: `Bearer ${tokenRef.current}` },
+            timeout: 70000,
+          },
+        );
       } catch (erro) {
-        console.error("Erro ao iniciar o jogo:", erro);
+        console.warn("[Conquistas] Falha ao sincronizar no Supabase, mantendo em localStorage:", erro);
       }
     }
 
-    iniciarJogo();
+    return novas;
+  }, [getContextoPersistencia]);
 
-    return () => {
-      cancelado = true;
-
-      if (jogo) {
-        jogo.scale.off("enterfullscreen");
-        jogo.scale.off("leavefullscreen");
-
-        jogo.destroy(true);
-      }
-
-      if (jogoRef.current === jogo) {
-        jogoRef.current = null;
-      }
-    };
-  }, [iniciado]);
-
-  async function alternarTelaCheia() {
-    const jogo = jogoRef.current;
-
-    if (!jogo) return;
-
-    try {
-      if (jogo.scale.isFullscreen) {
-        jogo.scale.stopFullscreen();
-      } else {
-        await jogo.scale.startFullscreen();
-      }
-    } catch (erro) {
-      console.error("Erro ao ativar tela cheia:", erro);
-    }
-  }
-
-  async function salvarPontuacao(pontuacaoCapturada = gameOver) {
+  const salvarPontuacao = useCallback(async (pontuacaoCapturada = gameOver) => {
     if (demoAtivo) {
       setEstadoSalvamento("idle");
       setMensagem("Ranking indisponível no modo de demonstração.");
@@ -238,7 +185,120 @@ export default function Jogar() {
     } finally {
       salvamentoEmAndamentoRef.current = false;
     }
+  }, [demoAtivo, gameOver]);
+
+  useEffect(() => {
+    if (!iniciado || !containerRef.current) return;
+
+    let cancelado = false;
+    let jogo = null;
+
+    async function iniciarJogo() {
+      try {
+        if (document.fonts) {
+          await document.fonts.load('16px "PressStart2P"');
+          await document.fonts.ready;
+        }
+
+        if (cancelado || !containerRef.current) return;
+
+        jogo = criarJogo(containerRef.current);
+        jogoRef.current = jogo;
+
+        const aoTerminarPartida = async (resumoFinal) => {
+          if (cancelado) return;
+
+          const pontuacaoExata = Number(resumoFinal?.score ?? resumoFinal ?? 0);
+          const resumoNormalizado = {
+            score: pontuacaoExata,
+            vidasRestantes: Number(resumoFinal?.vidasRestantes ?? 0),
+            sequenciaMaxima: Number(resumoFinal?.sequenciaMaxima ?? 0),
+            minigameMaisRapidoMs:
+              resumoFinal?.minigameMaisRapidoMs === null || resumoFinal?.minigameMaisRapidoMs === undefined
+                ? null
+                : Number(resumoFinal.minigameMaisRapidoMs),
+          };
+
+          console.info("[GameOver] Jogador conectado:", {
+            jogadorId: jogadorIdRef.current,
+            nome: usuarioRef.current,
+          });
+          console.info("[GameOver] Pontuação capturada no Phaser:", {
+            pontuacaoFinal: pontuacaoExata,
+            resumo: resumoNormalizado,
+          });
+          salvamentoEmAndamentoRef.current = false;
+          pontuacaoSalvaRef.current = false;
+          setEstadoSalvamento("idle");
+          setMensagem("");
+          setGameOver(pontuacaoExata);
+
+          await processarConquistasPartida(resumoNormalizado);
+          salvarPontuacao(pontuacaoExata);
+        };
+
+        jogo.events.on("fim-de-partida", aoTerminarPartida);
+
+        const atualizarTelaCheia = () => {
+          if (!jogo || cancelado) return;
+
+          setTelaCheia(jogo.scale.isFullscreen);
+
+          requestAnimationFrame(() => {
+            if (!cancelado && jogo) {
+              jogo.scale.refresh();
+            }
+          });
+        };
+
+        jogo.scale.on("enterfullscreen", atualizarTelaCheia);
+        jogo.scale.on("leavefullscreen", atualizarTelaCheia);
+
+        document.addEventListener("fullscreenchange", atualizarTelaCheia);
+
+        jogo.events.once("destroy", () => {
+          document.removeEventListener("fullscreenchange", atualizarTelaCheia);
+          jogo.events.off("fim-de-partida", aoTerminarPartida);
+        });
+      } catch (erro) {
+        console.error("Erro ao iniciar o jogo:", erro);
+      }
+    }
+
+    iniciarJogo();
+
+    return () => {
+      cancelado = true;
+
+      if (jogo) {
+        jogo.scale.off("enterfullscreen");
+        jogo.scale.off("leavefullscreen");
+
+        jogo.destroy(true);
+      }
+
+      if (jogoRef.current === jogo) {
+        jogoRef.current = null;
+      }
+    };
+  }, [iniciado, processarConquistasPartida, salvarPontuacao]);
+
+  async function alternarTelaCheia() {
+    const jogo = jogoRef.current;
+
+    if (!jogo) return;
+
+    try {
+      if (jogo.scale.isFullscreen) {
+        jogo.scale.stopFullscreen();
+      } else {
+        await jogo.scale.startFullscreen();
+      }
+    } catch (erro) {
+      console.error("Erro ao ativar tela cheia:", erro);
+    }
   }
+
 
   async function enviarAutenticacao(evento) {
     evento.preventDefault();
@@ -284,6 +344,7 @@ export default function Jogar() {
 
   function voltarAoMenu() {
     setGameOver(null);
+    setConquistasNovas([]);
     setIniciado(false);
   }
 
@@ -430,6 +491,27 @@ export default function Jogar() {
                       >
                         {mensagem}
                       </p>
+                    )}
+
+                    {conquistasNovas.length > 0 && (
+                      <div className="mt-4 rounded-xl border border-[#FFC93C]/70 bg-[#fff6d6]/10 p-3 text-left">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFC93C]">
+                          Novas conquistas
+                        </p>
+                        <ul className="mt-3 space-y-2">
+                          {conquistasNovas.map((item) => (
+                            <li key={item.id} className="flex items-start gap-3 rounded-lg bg-[#151515]/40 p-2">
+                              <span className="flex size-9 items-center justify-center rounded-lg bg-[#FFC93C]/15 text-xl">
+                                {item.icon}
+                              </span>
+                              <div>
+                                <p className="text-sm font-bold text-white">{item.name}</p>
+                                <p className="text-xs text-white/70">{item.description}</p>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
 
                     {demoAtivo ? (

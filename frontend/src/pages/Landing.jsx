@@ -1,11 +1,57 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import axios from "axios";
 import { ArrowRight } from "lucide-react";
 import TelaDoJogo from "../components/TelaDoJogo";
 import Carrossel from "../components/Carrossel";
 import ComoFunciona from "../components/ComoFunciona";
+import { readAchievementList } from "../config/achievements";
+
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+const API_URL_LOCAL = import.meta.env.DEV ? "http://localhost:5000" : API_URL;
 
 export default function Landing() {
+  const [conquistas, setConquistas] = useState([]);
   const larguraDosNomes = ["w-2/5", "w-1/3", "w-1/2", "w-2/5", "w-1/4"];
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function carregarConquistas() {
+      const token = localStorage.getItem("jbifc_token");
+
+      if (!token || !API_URL_LOCAL) {
+        if (!cancelado) {
+          setConquistas(readAchievementList({ demoMode: true }));
+        }
+        return;
+      }
+
+      try {
+        const resposta = await axios.get(`${API_URL_LOCAL}/api/conquistas`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 70000,
+        });
+
+        const lista = Array.isArray(resposta.data?.conquistas) ? resposta.data.conquistas : [];
+
+        if (!cancelado) {
+          setConquistas(lista);
+        }
+      } catch {
+        if (!cancelado) {
+          setConquistas(readAchievementList({ demoMode: false }));
+        }
+      }
+    }
+
+    carregarConquistas();
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   return (
     <main>
       <section className="pt-11.5 pb-14 md:pt-18 md:pb-20">

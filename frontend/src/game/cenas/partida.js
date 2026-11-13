@@ -26,8 +26,10 @@ export default class Partida extends Phaser.Scene {
     this.vidas = VIDAS;
     this.pontos = 0;
     this.sequencia = 0;
+    this.maximoSequencia = 0;
     this.ultimo = null;
     this.minigame = null;
+    this.minigameMaisRapidoMs = null;
     this.estado = "instrucao"; 
     this.partidaTerminada = false;
   }
@@ -153,9 +155,20 @@ this.textoCentro.setResolution(3);
     this.estado = "feedback";
     this.barra.setScale(0, 1);
 
+    const tempoExecutado = Number.isFinite(this.tempoTotal) && Number.isFinite(this.tempoRestante)
+      ? this.tempoTotal - this.tempoRestante
+      : 0;
+
+    if (tempoExecutado > 0) {
+      if (this.minigameMaisRapidoMs === null || tempoExecutado < this.minigameMaisRapidoMs) {
+        this.minigameMaisRapidoMs = tempoExecutado;
+      }
+    }
+
     if (venceu) {
       this.pontos += PONTOS_POR_VITORIA;
       this.sequencia += 1;
+      this.maximoSequencia = Math.max(this.maximoSequencia, this.sequencia);
       this.textoCentro.setText("ACERTOU!").setColor(COR.verde);
     } else {
       this.vidas -= 1;
@@ -164,7 +177,6 @@ this.textoCentro.setResolution(3);
     }
     this.atualizarHud();
 
-    
     this.time.delayedCall(TEMPO_FEEDBACK, () => {
       this.limparMinigame();
       if (this.vidas > 0) this.proximaRodada();
@@ -183,11 +195,20 @@ this.textoCentro.setResolution(3);
 
     this.partidaTerminada = true;
     const pontuacaoFinal = this.pontos;
+    const resumoPartida = {
+      score: pontuacaoFinal,
+      vidasRestantes: this.vidas,
+      sequenciaMaxima: this.maximoSequencia,
+      minigameMaisRapidoMs: this.minigameMaisRapidoMs,
+    };
+
     console.info("[GameOver] Pontuação capturada:", {
       vidas: this.vidas,
       pontuacaoFinal,
       hud: this.textoPontos.text,
+      sequenciaMaxima: this.maximoSequencia,
+      minigameMaisRapidoMs: this.minigameMaisRapidoMs,
     });
-    this.game.events.emit("fim-de-partida", pontuacaoFinal);
+    this.game.events.emit("fim-de-partida", resumoPartida);
   }
 }

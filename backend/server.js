@@ -1,4 +1,5 @@
 import path from "node:path";
+import dns from "node:dns";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
@@ -36,37 +37,104 @@ function buildSupabaseHeaders({ useServiceRole = true } = {}) {
   };
 }
 
+async function diagnosticarSupabase() {
+  const diagnostico = {
+    supabaseUrl: SUPABASE_URL || null,
+    host: SUPABASE_URL ? new URL(SUPABASE_URL).hostname : null,
+    dns: null,
+    http: null,
+    serviceRoleConfigured: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+    anonConfigured: Boolean(SUPABASE_ANON_KEY),
+  };
+
+  if (!SUPABASE_URL) {
+    diagnostico.dns = { status: "sem_url" };
+    diagnostico.http = { status: "sem_url" };
+    return diagnostico;
+  }
+
+  try {
+    const resultado = await dns.promises.lookup(diagnostico.host);
+    diagnostico.dns = {
+      status: "resolvido",
+      address: resultado.address,
+      family: resultado.family,
+    };
+  } catch (erro) {
+    diagnostico.dns = {
+      status: "nao_resolve",
+      code: erro.code || erro.name,
+      message: erro.message,
+    };
+    return diagnostico;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const resposta = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+      method: "GET",
+      headers: buildSupabaseHeaders({ useServiceRole: true }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    diagnostico.http = {
+      status: resposta.status,
+      ok: resposta.ok,
+      statusText: resposta.statusText,
+      url: `${SUPABASE_URL}/rest/v1/`,
+    };
+  } catch (erro) {
+    diagnostico.http = {
+      status: "falha_conexao",
+      message: erro.message,
+      code: erro.code || erro.name,
+    };
+  }
+
+  return diagnostico;
+}
+
 async function supabaseFetch(table, { method = "GET", query = "", body = null, useServiceRole = true } = {}) {
   if (!SUPABASE_URL) {
     throw new Error("SUPABASE_URL não configurada.");
   }
 
   const url = query ? `${SUPABASE_URL}/rest/v1/${table}?${query}` : `${SUPABASE_URL}/rest/v1/${table}`;
-  const response = await fetch(url, {
-    method,
-    headers: buildSupabaseHeaders({ useServiceRole }),
-    body: body === null || body === undefined ? undefined : JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
-  const texto = await response.text();
-  let payload = null;
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: buildSupabaseHeaders({ useServiceRole }),
+      body: body === null || body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
 
-  if (texto) {
-    try {
-      payload = JSON.parse(texto);
-    } catch {
-      payload = texto;
+    const texto = await response.text();
+    let payload = null;
+
+    if (texto) {
+      try {
+        payload = JSON.parse(texto);
+      } catch {
+        payload = texto;
+      }
     }
-  }
 
-  if (!response.ok) {
-    const mensagem = typeof payload === "object" && payload !== null
-      ? payload.message || payload.error || JSON.stringify(payload)
-      : payload || "Erro ao acessar o Supabase.";
-    throw new Error(`Supabase ${table}: ${mensagem}`);
-  }
+    if (!response.ok) {
+      const mensagem = typeof payload === "object" && payload !== null
+        ? payload.message || payload.error || JSON.stringify(payload)
+        : payload || "Erro ao acessar o Supabase.";
+      throw new Error(`Supabase ${table}: ${mensagem}`);
+    }
 
-  return payload;
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 app.use(cors());
@@ -105,25 +173,69 @@ function autenticar(req, res, next) {
 }
 
 async function validarConfiguracaoSupabase() {
+  const diagnostico = await diagnosticarSupabase();
+
   if (!SUPABASE_URL) {
-    throw new Error("SUPABASE_URL não está configurada.");
+    console.warn("[Banco] SUPABASE_URL não configurada. Verifique o arquivo backend/.env.");
+    return false;
   }
   if (!SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY não está configurada.");
+    console.warn("[Banco] SUPABASE_SERVICE_ROLE_KEY não configurada. Verifique o arquivo backend/.env.");
+    return false;
   }
 
-  await supabaseFetch("jogadores", { query: "select=id&limit=1" });
-  console.info("[Banco] Conexão HTTPS com o Supabase validada com sucesso.");
+  if (diagnostico.dns?.status !== "resolvido") {
+    console.error("[Banco] Falha de DNS/URL do Supabase:", {
+      host: diagnostico.host,
+      dns: diagnostico.dns,
+      http: diagnostico.http,
+    });
+    return false;
+  }
+
+  try {
+    await supabaseFetch("jogadores", { query: "select=id&limit=1" });
+    console.info("[Banco] Conexão HTTPS com o Supabase validada com sucesso.");
+    return true;
+  } catch (err) {
+    console.error("[Banco] Supabase respondeu ou falhou em autenticação/HTTP:", {
+      host: diagnostico.host,
+      dns: diagnostico.dns,
+      http: diagnostico.http,
+      erro: err.message || err,
+    });
+    return false;
+  }
 }
 
 app.get("/health", async (_req, res) => {
-  try {
-    const resultado = await supabaseFetch("jogadores", { query: "select=id&limit=1" });
-    res.json({ banco: "conectado", rows: resultado?.length ?? 0 });
-  } catch (err) {
-    console.error("[Banco] Falha na verificação de saúde:", err);
-    res.status(503).json({ banco: "indisponível", erro: err.message });
+  const diagnostico = await diagnosticarSupabase();
+
+  if (diagnostico.dns?.status === "resolvido" && diagnostico.http?.status === 401) {
+    return res.status(200).json({
+      banco: "resposta-http",
+      mensagem: "O host do Supabase responde, mas a autenticação falhou. Verifique a chave e a autorização.",
+      diagnostico: {
+        host: diagnostico.host,
+        dns: diagnostico.dns,
+        http: diagnostico.http,
+      },
+    });
   }
+
+  if (diagnostico.dns?.status === "resolvido" && diagnostico.http && diagnostico.http.status !== "falha_conexao") {
+    return res.status(200).json({
+      banco: "respondeu",
+      mensagem: "O endereço do Supabase respondeu por HTTPS, mas o acesso ainda precisa ser validado.",
+      diagnostico,
+    });
+  }
+
+  res.status(503).json({
+    banco: "indisponível",
+    mensagem: "O Supabase não está acessível a partir deste servidor.",
+    diagnostico,
+  });
 });
 
 app.post("/api/conta", async (req, res) => {
@@ -196,17 +308,116 @@ app.post("/api/login", async (req, res) => {
 app.get("/api/usuario", autenticar, async (req, res) => {
   try {
     const rows = await supabaseFetch("jogadores", {
-      query: `select=id,usuario&id=eq.${req.usuario.id}`,
+      query: `select=id,usuario,partidas_totais&id=eq.${req.usuario.id}`,
     });
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(401).json({ erro: "Conta não encontrada. Entre novamente." });
     }
 
-    res.json({ id: rows[0].id, usuario: rows[0].usuario });
+    res.json({ id: rows[0].id, usuario: rows[0].usuario, partidasTotais: Number(rows[0].partidas_totais ?? 0) });
   } catch (err) {
     console.error("[Conta] Erro ao verificar sessão:", err);
     res.status(500).json({ erro: "Erro ao verificar a sessão." });
+  }
+});
+
+app.get("/api/conquistas", autenticar, async (req, res) => {
+  try {
+    const linhas = await supabaseFetch("conquistas_jogador", {
+      query: `select=id,jogador_id,codigo,nome,descricao,icone,desbloqueado_em&jogador_id=eq.${req.usuario.id}&order=desbloqueado_em.asc`,
+    });
+
+    const jogador = await supabaseFetch("jogadores", {
+      query: `select=id,partidas_totais&id=eq.${req.usuario.id}`,
+    });
+
+    const conquistas = Array.isArray(linhas)
+      ? linhas.map((item) => ({
+          id: item.codigo,
+          codigo: item.codigo,
+          name: item.nome,
+          description: item.descricao,
+          icon: item.icone,
+          unlockedAt: item.desbloqueado_em,
+        }))
+      : [];
+
+    res.json({
+      conquistas,
+      partidasTotais: Number(Array.isArray(jogador) && jogador[0] ? jogador[0].partidas_totais ?? 0 : 0),
+    });
+  } catch (err) {
+    console.error("[Conquistas] Erro ao buscar conquistas:", err);
+    res.status(500).json({ erro: "Erro ao buscar as conquistas." });
+  }
+});
+
+app.post("/api/conquistas", autenticar, async (req, res) => {
+  const lista = Array.isArray(req.body?.conquistas) ? req.body.conquistas : [];
+  const partidasTotais = Number(req.body?.partidasTotais ?? 0);
+
+  if (!Number.isInteger(partidasTotais) || partidasTotais < 0) {
+    return res.status(400).json({ erro: "O total de partidas deve ser um inteiro não negativo." });
+  }
+
+  try {
+    const existentes = await supabaseFetch("conquistas_jogador", {
+      query: `select=id,codigo&jogador_id=eq.${req.usuario.id}`,
+    });
+    const existentesSet = new Set(Array.isArray(existentes) ? existentes.map((item) => item.codigo) : []);
+
+    const aInserir = lista.filter((item) => {
+      const codigo = String(item?.id ?? item?.codigo ?? "").trim();
+      return codigo && !existentesSet.has(codigo);
+    }).map((item) => ({
+      jogador_id: req.usuario.id,
+      codigo: String(item?.id ?? item?.codigo ?? "").trim(),
+      nome: String(item?.name ?? item?.nome ?? "Conquista").trim() || "Conquista",
+      descricao: String(item?.description ?? item?.descricao ?? "Conquista desbloqueada.").trim() || "Conquista desbloqueada.",
+      icone: String(item?.icon ?? item?.icone ?? "🏆").trim() || "🏆",
+      desbloqueado_em: new Date().toISOString(),
+    }));
+
+    const inseridas = [];
+    for (const item of aInserir) {
+      const registro = await supabaseFetch("conquistas_jogador", {
+        method: "POST",
+        body: item,
+      });
+      inseridas.push(Array.isArray(registro) ? registro[0] : registro);
+    }
+
+    await supabaseFetch("jogadores", {
+      method: "PATCH",
+      query: `id=eq.${req.usuario.id}`,
+      body: {
+        partidas_totais: partidasTotais,
+      },
+    });
+
+    const todas = await supabaseFetch("conquistas_jogador", {
+      query: `select=id,jogador_id,codigo,nome,descricao,icone,desbloqueado_em&jogador_id=eq.${req.usuario.id}&order=desbloqueado_em.asc`,
+    });
+
+    res.status(201).json({
+      mensagem: "Conquistas registradas.",
+      novas: inseridas,
+      conquistas: Array.isArray(todas)
+        ? todas.map((item) => ({
+            id: item.codigo,
+            codigo: item.codigo,
+            name: item.nome,
+            description: item.descricao,
+            icon: item.icone,
+            unlockedAt: item.desbloqueado_em,
+          }))
+        : [],
+      partidasTotais,
+    });
+  } catch (err) {
+    console.error("[Conquistas] Erro ao registrar conquistas:", err);
+    res.status(500).json({ erro: "Erro ao registrar as conquistas." });
   }
 });
 
@@ -359,13 +570,10 @@ if (!JWT_SECRET) {
   process.exit(1);
 }
 
-validarConfiguracaoSupabase()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("Falha ao conectar ao Supabase sobre HTTPS:", err);
-    process.exit(1);
-  });
+app.listen(PORT, () => {
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
+});
+
+validarConfiguracaoSupabase().catch((err) => {
+  console.warn("[Banco] Verificação inicial do Supabase falhou sem bloquear a inicialização:", err.message || err);
+});
