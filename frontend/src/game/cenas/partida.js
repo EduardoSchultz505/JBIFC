@@ -1,6 +1,5 @@
 import Phaser from "phaser";
-
-
+import { COR, FONTE, mostrarInstrucao } from "./instrucao.js";
 
 const MINIGAMES = Object.values(
   import.meta.glob(["../minigames/*.js", "!../minigames/_*.js"], { eager: true })
@@ -9,13 +8,9 @@ const MINIGAMES = Object.values(
   .filter(Boolean);
 
 const VIDAS = 3;
-const PONTOS_POR_VITORIA = 1; 
-const TEMPO_INSTRUCAO = 1000; 
-const TEMPO_FEEDBACK = 900; 
-const TEMPO_MINIMO = 1500; 
-
-const FONTE = "PressStart2P";
-const COR = { amarelo: "#FFC93C", verde: "#67F5A5", vermelho: "#CD191E", branco: "#FFFFFF" };
+const PONTOS_POR_VITORIA = 1;
+const TEMPO_FEEDBACK = 900;
+const TEMPO_MINIMO = 1500;
 
 export default class Partida extends Phaser.Scene {
   constructor() {
@@ -31,13 +26,13 @@ export default class Partida extends Phaser.Scene {
     this.ultimo = null;
     this.minigame = null;
     this.minigameMaisRapidoMs = null;
-    this.estado = "instrucao"; 
+    this.estado = "instrucao";
     this.partidaTerminada = false;
   }
 
   create() {
     const { width, height } = this.scale;
-    
+
     const k = height / 720;
     const px = (n) => `${Math.round(n * k)}px`;
 
@@ -58,17 +53,17 @@ export default class Partida extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(10);
-      
-this.textoPontos.setResolution(2);
-this.textoVidas.setResolution(2);
-this.textoCentro.setResolution(3);
+
+    this.textoPontos.setResolution(2);
+    this.textoVidas.setResolution(2);
+    this.textoCentro.setResolution(3);
+
     this.barra = this.add
       .rectangle(0, height - 8 * k, width, 12 * k, 0xffc93c)
       .setOrigin(0, 0.5)
       .setScale(0, 1)
       .setDepth(20);
 
-    
     this.events.once("shutdown", () => this.limparMinigame());
 
     this.atualizarHud();
@@ -81,32 +76,21 @@ this.textoCentro.setResolution(3);
   }
 
   redimensionar(width, height) {
-  const escala = Math.min(width / 800, height / 450);
-  const px = (n) => `${Math.round(n * escala)}px`;
+    const escala = Math.min(width / 800, height / 450);
+    const px = (n) => `${Math.round(n * escala)}px`;
 
-  this.textoPontos
-    .setPosition(24 * escala, 16 * escala)
-    .setFontSize(px(40));
-
-  this.textoVidas
-    .setPosition(width - 24 * escala, 16 * escala)
-    .setFontSize(px(40));
-
-  this.textoCentro
-    .setPosition(width / 2, height / 2)
-    .setFontSize(px(110));
-
-  this.barra
-    .setPosition(0, height - 8 * escala)
-    .setSize(width, 12 * escala);
-}
+    this.textoPontos.setPosition(24 * escala, 16 * escala).setFontSize(px(40));
+    this.textoVidas.setPosition(width - 24 * escala, 16 * escala).setFontSize(px(40));
+    this.textoCentro.setPosition(width / 2, height / 2).setFontSize(px(110));
+    this.barra.setPosition(0, height - 8 * escala).setSize(width, 12 * escala);
+  }
 
   atualizarHud() {
     this.textoPontos.setText(`Pontos: ${this.pontos}`);
     this.textoVidas.setText(`Vidas: ${this.vidas}`);
   }
 
-  
+  // Evita repetir o mesmo minigame duas vezes seguidas
   sortear() {
     const opcoes =
       MINIGAMES.length > 1 ? MINIGAMES.filter((M) => M !== this.ultimo) : MINIGAMES;
@@ -115,7 +99,7 @@ this.textoCentro.setResolution(3);
     return escolhido;
   }
 
-  
+  // Cada 5 vitórias seguidas reduz o tempo em 10%
   calcularTempo(duracaoBase) {
     const ms = duracaoBase * 1000 * 0.9 ** Math.floor(this.sequencia / 5);
     return Math.max(TEMPO_MINIMO, ms);
@@ -126,13 +110,15 @@ this.textoCentro.setResolution(3);
     this.minigame = new Minigame(this);
     this.estado = "instrucao";
     this.barra.setScale(0, 1);
-    this.textoCentro.setText(this.minigame.instrucao).setColor(COR.branco);
+    this.textoCentro.setText("");
 
-    this.time.delayedCall(TEMPO_INSTRUCAO, () => {
-      this.textoCentro.setText("");
+    // Monta o primeiro quadro atrás do painel; o minigame fica parado
+    // porque o update só chama atualizar() no estado "jogando"
+    this.minigame.iniciar();
+
+    mostrarInstrucao(this, this.minigame, () => {
       this.tempoTotal = this.calcularTempo(this.minigame.duracao);
       this.tempoRestante = this.tempoTotal;
-      this.minigame.iniciar();
       this.estado = "jogando";
     });
   }
@@ -144,9 +130,8 @@ this.textoCentro.setResolution(3);
     this.barra.setScale(Math.max(0, this.tempoRestante / this.tempoTotal), 1);
     this.minigame.atualizar(delta);
 
-    let resultado = this.minigame.resultado(); 
+    let resultado = this.minigame.resultado();
     if (resultado === "jogando" && this.tempoRestante <= 0) {
-      
       resultado = this.minigame.venceAoFimDoTempo ? "ganhou" : "perdeu";
     }
     if (resultado !== "jogando") this.encerrarRodada(resultado === "ganhou");
@@ -156,9 +141,10 @@ this.textoCentro.setResolution(3);
     this.estado = "feedback";
     this.barra.setScale(0, 1);
 
-    const tempoExecutado = Number.isFinite(this.tempoTotal) && Number.isFinite(this.tempoRestante)
-      ? this.tempoTotal - this.tempoRestante
-      : 0;
+    const tempoExecutado =
+      Number.isFinite(this.tempoTotal) && Number.isFinite(this.tempoRestante)
+        ? this.tempoTotal - this.tempoRestante
+        : 0;
 
     if (tempoExecutado > 0) {
       if (this.minigameMaisRapidoMs === null || tempoExecutado < this.minigameMaisRapidoMs) {

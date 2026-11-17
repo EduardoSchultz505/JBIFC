@@ -58,7 +58,7 @@ export default class JogueSemSerPego {
       add.image(TELA.x + TELA.w / 2, TELA.y + TELA.h / 2, "nsp-bird-bg").setDisplaySize(TELA.w, TELA.h).setDepth(1)
     );
     this.passaro = this.soNoFlappy(add.image(this.passaroX, TELA.y + TELA.h / 2, "nsp-bird").setDepth(3));
-    this.ajustarAltura(this.passaro, 60);
+    this.ajustarAltura(this.passaro, 50);
     
     this.guia = this.soNoFlappy(
       add.image(width / 2, height / 2, "nsp-guia").setDisplaySize(width, height).setDepth(4).setVisible(false)
