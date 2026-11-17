@@ -60,7 +60,7 @@ export const ACHIEVEMENT_DEFS = [
     icon: "🎓",
     hint: "Passe por cinco fases para provar que você domina o desafio.",
     target: 5,
-    test: (summary) => Number(summary?.partidasTotaisApos ?? 0) >= 5 || Number(summary?.score ?? 0) >= 5,
+    test: (summary) => Number(summary?.fasesCompletas ?? 0) >= 5,
   },
   {
     id: "sem-medo",

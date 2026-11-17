@@ -213,6 +213,7 @@ export default function Jogar() {
             score: pontuacaoExata,
             vidasRestantes: Number(resumoFinal?.vidasRestantes ?? 0),
             sequenciaMaxima: Number(resumoFinal?.sequenciaMaxima ?? 0),
+            fasesCompletas: Number(resumoFinal?.fasesCompletas ?? 0),
             minigameMaisRapidoMs:
               resumoFinal?.minigameMaisRapidoMs === null || resumoFinal?.minigameMaisRapidoMs === undefined
                 ? null

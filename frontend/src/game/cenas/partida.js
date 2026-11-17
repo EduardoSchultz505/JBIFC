@@ -27,6 +27,7 @@ export default class Partida extends Phaser.Scene {
     this.pontos = 0;
     this.sequencia = 0;
     this.maximoSequencia = 0;
+    this.fasesCompletas = 0;
     this.ultimo = null;
     this.minigame = null;
     this.minigameMaisRapidoMs = null;
@@ -168,6 +169,7 @@ this.textoCentro.setResolution(3);
     if (venceu) {
       this.pontos += PONTOS_POR_VITORIA;
       this.sequencia += 1;
+      this.fasesCompletas += 1;
       this.maximoSequencia = Math.max(this.maximoSequencia, this.sequencia);
       this.textoCentro.setText("ACERTOU!").setColor(COR.verde);
     } else {
@@ -199,6 +201,7 @@ this.textoCentro.setResolution(3);
       score: pontuacaoFinal,
       vidasRestantes: this.vidas,
       sequenciaMaxima: this.maximoSequencia,
+      fasesCompletas: this.fasesCompletas,
       minigameMaisRapidoMs: this.minigameMaisRapidoMs,
     };
 

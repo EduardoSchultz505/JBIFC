@@ -97,7 +97,7 @@ export default function Landing() {
 
       <section className="border-t border-line bg-brand-soft py-14 md:py-18">
         <div className="overflow-hidden motion-reduce:overflow-x-auto">
-          <Carrossel />
+          <Carrossel conquistas={conquistas} />
         </div>
       </section>
 

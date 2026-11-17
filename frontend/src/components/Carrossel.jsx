@@ -1,22 +1,21 @@
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Lock, Sparkles } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Lock, Sparkles } from "lucide-react";
 import { ACHIEVEMENT_DEFS, formatAchievementDate, readAchievementList } from "../config/achievements";
 
 const COPIAS = [0, 1, 2, 3];
 
-export default function Carrossel({ conquistas: conquistasProp = [] }) {
+export default function Carrossel({ conquistas: conquistasProp }) {
   const containerRef = useRef(null);
   const [indiceAtual, setIndiceAtual] = useState(0);
-  const [conquistas, setConquistas] = useState(Array.isArray(conquistasProp) ? conquistasProp : []);
+  const [animacaoPausada, setAnimacaoPausada] = useState(false);
 
-  useEffect(() => {
-    if (Array.isArray(conquistasProp) && conquistasProp.length > 0) {
-      setConquistas(conquistasProp);
-      return;
+  const conquistas = useMemo(() => {
+    if (Array.isArray(conquistasProp)) {
+      return conquistasProp;
     }
 
     const token = typeof window !== "undefined" ? window.localStorage.getItem("jbifc_token") : null;
-    setConquistas(readAchievementList({ demoMode: !token }));
+    return readAchievementList({ demoMode: !token });
   }, [conquistasProp]);
 
   const itens = ACHIEVEMENT_DEFS.map((definicao) => {
@@ -34,23 +33,10 @@ export default function Carrossel({ conquistas: conquistasProp = [] }) {
 
   const concluidas = itens.filter((item) => item.desbloqueada).length;
 
-  const mover = (direcao) => {
-    if (!containerRef.current || itens.length === 0) return;
-
-    const proximoIndice = (indiceAtual + direcao + itens.length) % itens.length;
-    const item = containerRef.current.querySelectorAll("[data-mission-card]")[proximoIndice];
-
-    if (item) {
-      item.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    }
-
-    setIndiceAtual(proximoIndice);
-  };
-
   return (
-    <div className="mx-auto w-full max-w-275 px-3 md:px-0">
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <div>
+    <div className="w-full px-3 md:px-0">
+      <div className="mb-5 flex items-center justify-between gap-4 px-3 md:px-6">
+        <div className="pl-1 md:pl-2">
           <p className="text-xs leading-snug font-bold tracking-[.11em] text-brand">
             MISSÕES
           </p>
@@ -58,39 +44,33 @@ export default function Carrossel({ conquistas: conquistasProp = [] }) {
             Progresso do jogador
           </h2>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => mover(-1)}
-            aria-label="Missão anterior"
-            className="flex size-10 items-center justify-center rounded-full border border-brand-line bg-white text-brand transition hover:-translate-y-px hover:bg-brand-soft"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={() => mover(1)}
-            aria-label="Próxima missão"
-            className="flex size-10 items-center justify-center rounded-full border border-brand-line bg-white text-brand transition hover:-translate-y-px hover:bg-brand-soft"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
       </div>
 
-      <div className="mb-5 flex items-center justify-between gap-3 rounded-full border border-brand-line bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+      <div className="mb-5 flex items-center justify-between gap-3 rounded-full border border-brand-line bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted md:px-4">
         <span>Concluídas</span>
         <span className="text-brand">{concluidas}/{itens.length}</span>
       </div>
 
-      <div className="overflow-hidden motion-reduce:overflow-x-auto">
+      <div
+        className="w-full overflow-hidden pb-0"
+        ref={containerRef}
+        onMouseEnter={() => setAnimacaoPausada(true)}
+        onMouseLeave={() => setAnimacaoPausada(false)}
+        onTouchStart={() => setAnimacaoPausada(true)}
+        onTouchEnd={() => setAnimacaoPausada(false)}
+        onTouchCancel={() => setAnimacaoPausada(false)}
+      >
         <div
-          ref={containerRef}
           style={{
             display: "flex",
             width: "max-content",
+            minWidth: "100%",
+            gap: "1rem",
             animation: "carrossel 40s linear infinite",
+            animationPlayState: animacaoPausada ? "paused" : "running",
+            scrollSnapType: "x proximity",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {COPIAS.map((copia) =>
@@ -99,7 +79,9 @@ export default function Carrossel({ conquistas: conquistasProp = [] }) {
                 key={`${copia}-${item.id}`}
                 data-mission-card
                 aria-hidden={copia > 0}
-                className={`mr-4 w-40 shrink-0 rounded-lg border border-brand-line bg-subtle p-3 shadow-game transition md:w-48 ${
+                onClick={() => setIndiceAtual(index)}
+                style={{ scrollSnapAlign: "start" }}
+                className={`w-40 shrink-0 cursor-pointer rounded-lg border border-brand-line bg-subtle p-3 shadow-game transition md:w-48 ${
                   item.desbloqueada ? "border-[#ffc93c]/80 bg-[#fff8e6] text-ink" : "text-muted"
                 } ${copia > 0 ? "motion-reduce:hidden" : ""} ${index === indiceAtual ? "scale-[1.01]" : ""}`}
               >
