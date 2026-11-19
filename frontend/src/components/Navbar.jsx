@@ -1,9 +1,10 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { Menu, X } from "lucide-react";
+import Container from "./Container";
 
 const CHAVE_TOKEN = "jbifc_token";
 
-// Ajuste aqui se a rota do perfil for outra
 const rotaPerfil = (nome) => `/perfil/${encodeURIComponent(nome)}`;
 
 const LINKS = [
@@ -13,14 +14,13 @@ const LINKS = [
   ["/equipe", "Equipe"],
 ];
 
-// Lê o nome direto do token, sem chamar o servidor. O payload do JWT é só base64;
-// quem confere a assinatura é o backend, a cada requisição protegida.
+const foco ="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 function lerUsuario() {
   try {
     const token = localStorage.getItem(CHAVE_TOKEN);
     if (!token) return null;
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    // TextDecoder para nomes com acento (atob sozinho devolve bytes, não texto)
+    
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const dados = JSON.parse(new TextDecoder().decode(bytes));
     if (dados.exp && dados.exp * 1000 < Date.now()) return null;
@@ -35,7 +35,6 @@ function MenuUsuario({ usuario, aoSair }) {
   const raiz = useRef(null);
   const botao = useRef(null);
 
-  // Fecha ao clicar fora ou apertar Esc
   useEffect(() => {
     if (!aberto) return;
     const aoClicarFora = (e) => {
@@ -56,7 +55,7 @@ function MenuUsuario({ usuario, aoSair }) {
   }, [aberto]);
 
   const classeItem =
-    "flex min-h-11 w-full items-center rounded-md px-3 text-sm font-medium hover:bg-subtle";
+    "flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 text-sm font-medium hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-none";
 
   return (
     <div ref={raiz} className="relative">
@@ -67,7 +66,7 @@ function MenuUsuario({ usuario, aoSair }) {
         aria-expanded={aberto}
         aria-controls="menu-usuario"
         aria-label={`Menu de ${usuario}`}
-        className="flex min-h-11 items-center gap-2.5 text-white"
+        className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg text-white ${foco}`}
       >
         <span
           aria-hidden="true"
@@ -83,7 +82,7 @@ function MenuUsuario({ usuario, aoSair }) {
       {aberto && (
         <div
           id="menu-usuario"
-          className="absolute top-full right-0 z-30 mt-3 w-48 rounded-lg border border-line bg-surface p-1.5 text-foreground shadow-game"
+          className="absolute top-full right-0 z-30 mt-3 w-48 rounded-lg border border-line bg-surface p-2 shadow-game"
         >
           <p className="truncate px-3 py-2 text-xs text-muted">
             Conectado como {usuario}
@@ -114,7 +113,8 @@ function MenuUsuario({ usuario, aoSair }) {
 export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  // Força nova leitura do token (logout e mudanças feitas em outra aba)
+  const [menuAberto, setMenuAberto] = useState(false);
+  const botaoMenu = useRef(null);
   const [, atualizar] = useReducer((n) => n + 1, 0);
   const usuario = lerUsuario();
 
@@ -126,6 +126,18 @@ export default function Navbar() {
     return () => window.removeEventListener("storage", aoMudarStorage);
   }, []);
 
+  useEffect(() => {
+    if (!menuAberto) return;
+    const aoApertarTecla = (e) => {
+      if (e.key === "Escape") {
+        setMenuAberto(false);
+        botaoMenu.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", aoApertarTecla);
+    return () => document.removeEventListener("keydown", aoApertarTecla);
+  }, [menuAberto]);
+
   function sair() {
     localStorage.removeItem(CHAVE_TOKEN);
     atualizar();
@@ -134,28 +146,27 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-20 bg-brand">
-      <div className="mx-auto flex h-16 w-[calc(100%-32px)] max-w-275 items-center md:h-18 md:w-[calc(100%-48px)]">
+      <Container className="flex h-16 max-w-6xl items-center md:h-18">
         <Link
           aria-label="Ir para o início"
-          className="flex min-h-11 items-center gap-2.5 text-white md:gap-3.5"
+          onClick={() => setMenuAberto(false)}
+          className={`flex min-h-11 items-center gap-2 rounded-lg text-white md:gap-3 ${foco}`}
           to="/"
         >
-          <img src="/game/JBIFC.svg" alt="JBIFC" className="w-12" />
-          <span className="text-base font-bold tracking-tight md:text-lg">
-            JBIFC
-          </span>
+          <img src="/game/JBIFC.svg" alt="" className="w-12" />
+          <span className="text-base font-bold tracking-tight md:text-lg">JBIFC</span>
         </Link>
 
         <nav
           aria-label="Navegação principal"
-          className="ml-auto flex items-stretch gap-4 self-stretch md:gap-7.5"
+          className="ml-auto hidden items-stretch gap-8 self-stretch md:flex"
         >
           {LINKS.map(([rota, rotulo]) => (
             <Link
               key={rota}
               to={rota}
               aria-current={pathname === rota ? "page" : undefined}
-              className={`relative flex items-center text-sm font-medium after:absolute after:inset-x-0 after:bottom-3.75 after:h-0.5 ${
+              className={`relative flex items-center text-sm font-medium after:absolute after:inset-x-0 after:bottom-3 after:h-0.5 ${foco} ${
                 pathname === rota
                   ? "text-white after:bg-white"
                   : "text-white/85 after:bg-transparent hover:text-white"
@@ -166,21 +177,75 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden md:ml-9.5 md:block">
-          <Link
-            className="inline-flex min-h-10.5 items-center justify-center gap-2.5 rounded-lg border border-transparent bg-white px-5.5 text-[15px] font-semibold text-brand-hover transition duration-150 hover:-translate-y-px"
-            to="/jogar"
-          >
-            Jogar
-          </Link>
+        <Link
+          to="/jogar"
+          className={`ml-8 hidden min-h-11 items-center justify-center rounded-lg bg-white px-6 text-base font-semibold text-brand transition duration-150 hover:-translate-y-px md:inline-flex ${foco}`}
+        >
+          Jogar
+        </Link>
+
+        <div className="ml-auto md:ml-4">
+          {usuario ? (
+            <MenuUsuario usuario={usuario} aoSair={sair} />
+          ) : (
+            <Link
+              to="/login"
+              aria-current={pathname === "/login" ? "page" : undefined}
+              className={`flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-white/85 hover:text-white ${foco}`}
+            >
+              Entrar
+            </Link>
+          )}
         </div>
 
-        {usuario && (
-          <div className="ml-3 md:ml-4">
-            <MenuUsuario usuario={usuario} aoSair={sair} />
-          </div>
-        )}
-      </div>
+        <button
+          ref={botaoMenu}
+          type="button"
+          onClick={() => setMenuAberto((a) => !a)}
+          aria-expanded={menuAberto}
+          aria-controls="menu-mobile"
+          aria-label="Menu"
+          className={`ml-1 grid size-11 cursor-pointer place-items-center rounded-lg text-white md:hidden ${foco}`}
+        >
+          {menuAberto ? (
+            <X aria-hidden="true" size={24} />
+          ) : (
+            <Menu aria-hidden="true" size={24} />
+          )}
+        </button>
+      </Container>
+        <nav
+  id="menu-mobile"
+  aria-label="Navegação principal"
+  className={`overflow-hidden transition-[max-height,visibility] duration-300 ease-out motion-reduce:transition-none md:hidden ${
+    menuAberto ? "visible max-h-96" : "invisible max-h-0"
+  }`}
+>
+  <Container className="flex max-w-6xl flex-col gap-1 border-t border-white/15 py-3">
+    {LINKS.map(([rota, rotulo]) => (
+      <Link
+        key={rota}
+        to={rota}
+        onClick={() => setMenuAberto(false)}
+        aria-current={pathname === rota ? "page" : undefined}
+        className={`flex min-h-12 items-center rounded-lg px-3 text-base font-medium ${foco} ${
+          pathname === rota
+            ? "bg-white/15 text-white"
+            : "text-white/85 hover:bg-white/10 hover:text-white"
+        }`}
+      >
+        {rotulo}
+      </Link>
+    ))}
+    <Link
+      to="/jogar"
+      onClick={() => setMenuAberto(false)}
+      className={`mt-2 flex min-h-12 items-center justify-center rounded-lg bg-white text-base font-semibold text-brand ${foco}`}
+    >
+      Jogar
+    </Link>
+  </Container>
+</nav>
     </header>
   );
 }

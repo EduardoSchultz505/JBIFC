@@ -1,7 +1,7 @@
 @theme {
-  --font-sans: "Inter", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --breakpoint-md: 801px;
+  --breakpoint-md: 48rem;
   --breakpoint-xs: 421px;
 
   --color-background: #f5f6f4;
@@ -29,8 +29,15 @@
   --color-sun-soft: #fff6d6;
   --color-sun-ink: #856300;
 
+  --color-danger: #cd191e;
+  --color-danger-light: #ff6b6f;
+
   --color-footer: #1f2a30;
 
   --shadow-game: 0 24px 60px rgb(14 27 20 / 15%), 0 4px 14px rgb(14 27 20 / 10%);
   --shadow-play: 0 7px 22px rgb(0 0 0 / 24%);
+
+  --animate-carrossel: carrossel 80s linear infinite;
+  --animate-varredura: varredura 5s linear infinite;
+  --animate-piscar: piscar 1.2s step-end infinite;
 }

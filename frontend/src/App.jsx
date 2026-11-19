@@ -10,21 +10,21 @@ import Login from "./pages/Login";
 import Perfil from "./pages/Perfil";
 import ScrollToTop from "./components/ScrollToTop";
 
-  export default function App() {
-    return (
-      <>
-        <ScrollToTop />
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/jogar" element={<Jogar />} />
-          <Route path="/ranking" element={<Ranking />} />
-          <Route path="/equipe" element={<Equipe />} />
-          <Route path="/como-jogar" element={<Tutorial />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/perfil/:nome" element={<Perfil />} />
-        </Routes>
-        <Footer />
-      </>
-    );
-  }
+export default function App() {
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <ScrollToTop />
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/jogar" element={<Jogar />} />
+        <Route path="/ranking" element={<Ranking />} />
+        <Route path="/equipe" element={<Equipe />} />
+        <Route path="/como-jogar" element={<Tutorial />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/perfil/:nome" element={<Perfil />} />
+      </Routes>
+      <Footer />
+    </div>
+  );
+}

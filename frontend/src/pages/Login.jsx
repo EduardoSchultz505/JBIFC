@@ -1,25 +1,28 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
+import Container from "../components/Container";
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 const API_URL_LOCAL = import.meta.env.DEV ? "http://localhost:5000" : API_URL;
 
 const VAZIO = { usuario: "", senha: "", confirmar: "" };
 const USUARIO_VALIDO = /^[\p{L}\p{N}_-]{3,20}$/u;
+const MODOS = [
+  ["login", "Entrar"],
+  ["cadastro", "Criar conta"],
+];
 
 function validar(modo, v) {
   const erros = {};
-  const usuario = v.usuario.trim();
-  if (!USUARIO_VALIDO.test(usuario)) erros.usuario = "Use letras, números, _ ou - (3 a 20).";
-  if (usuario.length < 3 || usuario.length > 20) {
-    erros.usuario = "Use de 3 a 20 caracteres.";
+  if (!USUARIO_VALIDO.test(v.usuario.trim())) {
+    erros.usuario = "Use de 3 a 20 letras, números, _ ou -.";
   }
-  if (modo === "cadastro" && v.senha.length < 8) {
-    erros.senha = "A senha precisa ter pelo menos 8 caracteres.";
-  } else if (!v.senha) {
+  if (!v.senha) {
     erros.senha = "Digite a senha.";
+  } else if (modo === "cadastro" && v.senha.length < 8) {
+    erros.senha = "A senha precisa ter pelo menos 8 caracteres.";
   }
   if (modo === "cadastro" && v.confirmar !== v.senha) {
     erros.confirmar = "As senhas não são iguais.";
@@ -36,7 +39,7 @@ function Campo({ label, erro, children }) {
       </label>
       {children(id, erro ? `${id}-erro` : undefined)}
       {erro && (
-        <p id={`${id}-erro`} className="mt-1.5 text-[13px] text-[#CD191E]">
+        <p id={`${id}-erro`} className="mt-1.5 text-sm text-danger">
           {erro}
         </p>
       )}
@@ -44,28 +47,45 @@ function Campo({ label, erro, children }) {
   );
 }
 
+
 const classeInput = (erro) =>
-  `min-h-12 w-full rounded-lg border bg-surface px-3.5 text-[15px] outline-none transition duration-150 placeholder:text-muted focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 ${
-    erro ? "border-[#CD191E]" : "border-line"
+  `min-h-12 w-full rounded-lg border bg-surface px-4 text-base outline-none transition duration-150 placeholder:text-muted focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 ${
+    erro ? "border-danger" : "border-line"
   }`;
 
 export default function Login() {
   const navigate = useNavigate();
+  const id = useId();
+  const abas = useRef([]);
   const [modo, setModo] = useState("login");
   const [valores, setValores] = useState(VAZIO);
   const [erros, setErros] = useState({});
   const [erroServidor, setErroServidor] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [verSenha, setVerSenha] = useState(false);
-
   const cadastro = modo === "cadastro";
-
-  // Ao trocar de aba, limpa erros e senhas
+  
   function trocarModo(novo) {
     setModo(novo);
     setErros({});
     setErroServidor("");
     setValores((v) => ({ ...v, senha: "", confirmar: "" }));
+  }
+  
+  function aoTeclar(e) {
+    const atual = MODOS.findIndex(([valor]) => valor === modo);
+    const destino = {
+      ArrowRight: atual + 1,
+      ArrowLeft: atual - 1,
+      Home: 0,
+      End: MODOS.length - 1,
+    }[e.key];
+    if (destino === undefined) return;
+
+    e.preventDefault();
+    const novo = (destino + MODOS.length) % MODOS.length;
+    trocarModo(MODOS[novo][0]);
+    abas.current[novo]?.focus();
   }
 
   function atualizar(campo) {
@@ -77,29 +97,28 @@ export default function Login() {
 
   async function enviar(e) {
     e.preventDefault();
+    if (carregando) return;
     setErroServidor("");
-
     const encontrados = validar(modo, valores);
-    if (Object.keys(encontrados).length > 0) {
+    const primeiroErro = Object.keys(encontrados)[0];
+    if (primeiroErro) {
       setErros(encontrados);
+      e.currentTarget.elements[primeiroErro]?.focus();
       return;
     }
     if (!API_URL_LOCAL) {
       setErroServidor("A URL da API não está configurada.");
       return;
     }
-
     setCarregando(true);
     try {
-      // Rotas do backend: POST /api/conta e POST /api/login
+      
       const rota = cadastro ? "conta" : "login";
       const corpo = { usuario: valores.usuario.trim(), senha: valores.senha };
-
-      // Timeout longo porque o servidor gratuito pode estar dormindo
+      
       const resposta = await axios.post(`${API_URL_LOCAL}/api/${rota}`, corpo, {
         timeout: 70000,
       });
-
       localStorage.setItem("jbifc_token", resposta.data.token);
       navigate("/jogar");
     } catch (err) {
@@ -117,36 +136,37 @@ export default function Login() {
 
   return (
     <main className="py-10 md:py-16">
-      <div className="mx-auto w-[calc(100%-32px)] max-w-105">
-        <h1 className="text-[32px] leading-[1.1] font-bold tracking-tighter md:text-4xl">
+      <Container className="max-w-md">
+        <h1 className="text-3xl font-bold leading-tight tracking-tighter md:text-4xl">
           {cadastro ? "Crie sua conta" : "Entre na sua conta"}
         </h1>
-        <p className="mt-3 mb-7 text-base leading-normal text-muted">
+        <p className="mt-3 mb-8 text-base leading-normal text-muted">
           {cadastro
             ? "Com uma conta, suas pontuações entram no ranking com o seu nome."
             : "Entre para salvar suas pontuações e aparecer no ranking."}
         </p>
-
-        <div className="rounded-xl border border-line bg-surface p-5 shadow-game md:p-7">
+        <div className="rounded-xl border border-line bg-surface p-5 shadow-game md:p-8">
           <div
             role="tablist"
             aria-label="Entrar ou criar conta"
-            className="mb-6 grid grid-cols-2 gap-1 rounded-lg bg-subtle p-1"
+            onKeyDown={aoTeclar}
+            className="mb-6 grid grid-cols-2 gap-1 rounded-lg bg-line/70 p-1"
           >
-            {[
-              ["login", "Entrar"],
-              ["cadastro", "Criar conta"],
-            ].map(([valor, rotulo]) => (
+            {MODOS.map(([valor, rotulo], i) => (
               <button
                 key={valor}
+                ref={(el) => (abas.current[i] = el)}
+                id={`${id}-aba-${valor}`}
                 type="button"
                 role="tab"
                 aria-selected={modo === valor}
+                aria-controls={`${id}-painel`}
+                tabIndex={modo === valor ? 0 : -1}
                 onClick={() => trocarModo(valor)}
-                className={`min-h-10 rounded-md text-sm font-semibold transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                className={`min-h-11 cursor-pointer rounded-md text-sm font-semibold transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                   modo === valor
                     ? "bg-surface text-brand shadow-sm"
-                    : "text-muted hover:text-foreground"
+                    : "hover:text-brand"
                 }`}
               >
                 {rotulo}
@@ -154,11 +174,19 @@ export default function Login() {
             ))}
           </div>
 
-          <form onSubmit={enviar} noValidate className="flex flex-col gap-4.5">
+          <form
+            id={`${id}-painel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-aba-${modo}`}
+            onSubmit={enviar}
+            noValidate
+            className="flex flex-col gap-4"
+          >
             <Campo label="Nome de usuário" erro={erros.usuario}>
-              {(id, descr) => (
+              {(campoId, descr) => (
                 <input
-                  id={id}
+                  id={campoId}
+                  name="usuario"
                   type="text"
                   autoComplete="username"
                   maxLength={20}
@@ -171,27 +199,27 @@ export default function Login() {
                 />
               )}
             </Campo>
-
             <Campo label="Senha" erro={erros.senha}>
-              {(id, descr) => (
+              {(campoId, descr) => (
                 <div className="relative">
                   <input
-                    id={id}
+                    id={campoId}
+                    name="senha"
                     type={verSenha ? "text" : "password"}
                     autoComplete={cadastro ? "new-password" : "current-password"}
                     value={valores.senha}
                     onChange={atualizar("senha")}
                     aria-invalid={!!erros.senha}
                     aria-describedby={descr}
-                    className={`${classeInput(erros.senha)} pr-12`}
+                    className={`${classeInput(erros.senha)} pr-14`}
                     placeholder={cadastro ? "Mínimo de 8 caracteres" : "Sua senha"}
                   />
                   <button
                     type="button"
                     onClick={() => setVerSenha((v) => !v)}
-                    aria-label={verSenha ? "Ocultar senha" : "Mostrar senha"}
+                    aria-label="Mostrar senha"
                     aria-pressed={verSenha}
-                    className="absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-md text-muted transition duration-150 hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
+                    className="absolute top-1/2 right-0.5 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-muted transition duration-150 hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
                   >
                     {verSenha ? (
                       <EyeOff aria-hidden="true" size={18} />
@@ -202,12 +230,12 @@ export default function Login() {
                 </div>
               )}
             </Campo>
-
             {cadastro && (
               <Campo label="Confirmar senha" erro={erros.confirmar}>
-                {(id, descr) => (
+                {(campoId, descr) => (
                   <input
-                    id={id}
+                    id={campoId}
+                    name="confirmar"
                     type={verSenha ? "text" : "password"}
                     autoComplete="new-password"
                     value={valores.confirmar}
@@ -220,25 +248,28 @@ export default function Login() {
                 )}
               </Campo>
             )}
-
-            <div aria-live="polite">
+            <div aria-live="polite" className="flex flex-col gap-2 empty:hidden">
               {erroServidor && (
-                <p className="rounded-lg border border-[#CD191E] bg-[#CD191E]/8 px-3.5 py-2.5 text-sm text-[#CD191E]">
+                <p className="rounded-lg border border-danger bg-danger/10 px-4 py-2.5 text-sm text-danger">
                   {erroServidor}
                 </p>
               )}
+              {carregando && (
+                <p className="text-sm text-muted">
+                  Na primeira vez o servidor pode levar até 1 minuto para acordar.
+                </p>
+              )}
             </div>
-
             <button
               type="submit"
               disabled={carregando}
-              className="inline-flex min-h-12 items-center justify-center rounded-lg bg-brand px-5.5 text-[15px] font-semibold text-white transition duration-150 hover:-translate-y-px hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:translate-y-0 disabled:cursor-wait disabled:opacity-70"
+              className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg bg-brand px-6 text-base font-semibold text-white transition duration-150 hover:-translate-y-px hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:translate-y-0 disabled:cursor-wait disabled:opacity-70"
             >
               {carregando ? "Enviando..." : cadastro ? "Criar conta" : "Entrar"}
             </button>
           </form>
         </div>
-      </div>
+      </Container>
     </main>
   );
 }

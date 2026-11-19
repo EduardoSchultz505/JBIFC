@@ -3,8 +3,7 @@ import { useId, useRef, useState } from "react";
 const passos = [
   {
     titulo: "Leia a instrução",
-    texto:
-      "Cada minijogo começa com uma ordem curta, e é ela que diz o que fazer.",
+    texto: "Cada minijogo começa com uma ordem curta, e é ela que diz o que fazer.",
     imagem: "",
     alt: "Tela de instrução de um minijogo",
   },
@@ -28,28 +27,30 @@ export default function ComoFunciona() {
   const id = useId();
 
   function aoTeclar(e) {
-    const ultimo = passos.length - 1;
-    let novo = null;
-    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-      novo = ativo === ultimo ? 0 : ativo + 1;
-    }
-    if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-      novo = ativo === 0 ? ultimo : ativo - 1;
-    }
-    if (e.key === "Home") novo = 0;
-    if (e.key === "End") novo = ultimo;
-    if (novo === null) return;
+    const total = passos.length;
+    const destino = {
+      ArrowRight: ativo + 1,
+      ArrowDown: ativo + 1,
+      ArrowLeft: ativo - 1,
+      ArrowUp: ativo - 1,
+      Home: 0,
+      End: total - 1,
+    }[e.key];
+    if (destino === undefined) return;
+
     e.preventDefault();
+    const novo = (destino + total) % total;
     setAtivo(novo);
-    botoes.current[novo].focus();
+    botoes.current[novo]?.focus();
   }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[.8fr_1.2fr] md:gap-12">
+    <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[2fr_3fr] md:gap-12">
       <div
         role="tablist"
         aria-label="Como funciona"
         aria-orientation="vertical"
+        onKeyDown={aoTeclar}
         className="flex flex-col gap-3"
       >
         {passos.map((passo, i) => {
@@ -65,11 +66,8 @@ export default function ComoFunciona() {
               aria-controls={`${id}-painel`}
               tabIndex={selecionado ? 0 : -1}
               onClick={() => setAtivo(i)}
-              onKeyDown={aoTeclar}
-              className={`grid min-h-11 grid-cols-[44px_1fr] rounded-lg border px-4 py-4 text-left transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                selecionado
-                  ? "border-brand bg-brand-soft"
-                  : "border-line hover:bg-subtle"
+              className={`grid cursor-pointer grid-cols-[2.75rem_1fr] rounded-lg border p-4 text-left transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                selecionado ? "border-brand bg-brand-soft" : "border-line hover:bg-subtle"
               }`}
             >
               <span
@@ -80,7 +78,7 @@ export default function ComoFunciona() {
                 {String(i + 1).padStart(2, "0")}
               </span>
               <span className="text-lg font-semibold">{passo.titulo}</span>
-              <span className="mt-1.5 max-w-[36ch] text-[15px] leading-[1.55] text-muted">
+              <span className="mt-1.5 max-w-sm text-base leading-relaxed text-muted">
                 {passo.texto}
               </span>
             </button>
@@ -106,6 +104,8 @@ export default function ComoFunciona() {
               <img
                 src={passo.imagem}
                 alt={passo.alt}
+                loading="lazy"
+                decoding="async"
                 className="size-full object-cover [image-rendering:pixelated]"
               />
             ) : (

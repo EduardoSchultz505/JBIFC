@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Link } from "react-router";
 import Menuprint from "../assets/Menuprint.png";
 
-function TelaDoJogo() {
+export default function TelaDoJogo() {
   const ref = useRef(null);
 
   function inclinar(e) {
@@ -23,7 +23,7 @@ function TelaDoJogo() {
     <Link
       to="/jogar"
       aria-label="Jogar JBIFC: Mosquito's Average Day"
-      className="block w-full min-w-0 perspective-[1000px]"
+      className="block w-full min-w-0 rounded-xl perspective-[1000px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
       onPointerMove={inclinar}
       onPointerLeave={soltar}
     >
@@ -35,6 +35,8 @@ function TelaDoJogo() {
           <img
             src={Menuprint}
             alt="Menu inicial do jogo"
+            fetchPriority="high"
+            decoding="async"
             className="block size-full object-cover [image-rendering:pixelated]"
           />
           <div
@@ -47,14 +49,12 @@ function TelaDoJogo() {
           />
           <p
             aria-hidden="true"
-            className="animate-piscar absolute inset-x-0 bottom-4 text-center text-xs font-bold tracking-[.2em] text-white motion-reduce:animate-none"
+            className="animate-piscar absolute inset-x-0 bottom-3 text-center text-xs font-bold uppercase tracking-widest text-white drop-shadow-md motion-reduce:animate-none md:bottom-4"
           >
-            PRESSIONE PARA JOGAR
+            Pressione para jogar
           </p>
         </div>
       </div>
     </Link>
   );
 }
-
-export default TelaDoJogo;

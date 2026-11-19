@@ -2,19 +2,17 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import axios from "axios";
 import { ArrowLeft, RotateCw } from "lucide-react";
+import Container from "../components/Container";
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 const API_URL_LOCAL = import.meta.env.DEV ? "http://localhost:5000" : API_URL;
 
 const ATRASO_AVISO_MS = 4000;
 
-const larguraPagina =
-  "mx-auto w-[calc(100%-32px)] max-w-205 md:w-[calc(100%-48px)]";
-
 const classeBotaoBase =
-  "inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg border px-5.5 text-[15px] font-semibold transition duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+  "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2.5 rounded-lg border px-6 text-base font-semibold transition duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 const classeBotaoPrimario = `${classeBotaoBase} border-transparent bg-brand text-white hover:bg-brand-hover`;
-const classeBotaoSecundario = `${classeBotaoBase} border-line bg-surface text-foreground hover:bg-subtle`;
+const classeBotaoSecundario = `${classeBotaoBase} border-line bg-surface hover:bg-subtle`;
 
 function formatarData(iso) {
   const data = iso ? new Date(iso) : null;
@@ -27,7 +25,7 @@ const formatarNumero = (n) => Number(n ?? 0).toLocaleString("pt-BR");
 
 function Eyebrow({ children }) {
   return (
-    <p className="text-xs leading-snug font-bold tracking-[.11em] text-brand">
+    <p className="text-xs font-bold uppercase tracking-widest text-brand">
       {children}
     </p>
   );
@@ -50,11 +48,9 @@ export default function Perfil() {
   const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPerfil(null);
     setErro(null);
     setDemorando(false);
-
     if (!API_URL_LOCAL) {
       setErro({ texto: "A URL da API não está configurada.", repetir: false });
       return;
@@ -62,9 +58,7 @@ export default function Perfil() {
 
     const controller = new AbortController();
     const aviso = setTimeout(() => setDemorando(true), ATRASO_AVISO_MS);
-
-    axios
-      .get(`${API_URL_LOCAL}/api/usuarios/${encodeURIComponent(nome)}`, {
+    axios.get(`${API_URL_LOCAL}/api/usuarios/${encodeURIComponent(nome)}`, {
         timeout: 70000,
         signal: controller.signal,
       })
@@ -83,11 +77,11 @@ export default function Perfil() {
       clearTimeout(aviso);
     };
   }, [nome, tentativa]);
-
+  
   if (erro) {
     return (
-      <main className="py-14 md:py-18">
-        <div className={larguraPagina}>
+      <main className="flex-1 py-14 md:py-16">
+        <Container className="max-w-4xl">
           <div role="alert">
             <h1 className="text-2xl font-semibold tracking-tight">{erro.texto}</h1>
           </div>
@@ -110,18 +104,18 @@ export default function Perfil() {
               Voltar ao ranking
             </Link>
           </div>
-        </div>
+        </Container>
       </main>
     );
   }
 
   if (!perfil) {
     return (
-      <main className="py-14 md:py-18" aria-busy="true">
-        <div className={larguraPagina}>
+      <main className="flex-1 py-14 md:py-16" aria-busy="true">
+        <Container className="max-w-4xl">
           <div className="esqueleto h-8 w-1/3 rounded bg-subtle" />
-          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[0, 1, 2].map((i) => (
               <div
                 key={i}
                 style={{ "--atraso": `${i * 150}ms` }}
@@ -137,7 +131,7 @@ export default function Perfil() {
               ? "O servidor pode levar até 1 minuto para acordar. Aguarde."
               : "Carregando perfil..."}
           </p>
-        </div>
+        </Container>
       </main>
     );
   }
@@ -146,21 +140,20 @@ export default function Perfil() {
   const conquistas = perfil.conquistas ?? [];
 
   return (
-    <main>
-      <section className="py-14 md:py-18">
-        <div className={larguraPagina}>
-          <Eyebrow>PERFIL DO JOGADOR</Eyebrow>
-          <h1 className="mt-1.75 text-[38px] leading-[1.07] font-bold tracking-tighter wrap-break-word md:text-[44px]">
+    <main className="flex-1">
+      <section className="py-14 md:py-16">
+        <Container className="max-w-4xl">
+          <Eyebrow>Perfil do jogador</Eyebrow>
+          <h1 className="mt-2 text-4xl font-bold leading-tight tracking-tighter wrap-break-word md:text-5xl">
             {perfil.usuario}
           </h1>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Numero valor={ranking ? `${ranking.posicao}º` : "-"} rotulo="Posição" />
             <Numero
               valor={formatarNumero(ranking?.pontuacao)}
               rotulo="Melhor pontuação"
             />
-            <Numero valor={formatarNumero(ranking?.nivel)} rotulo="Nível" />
             <Numero valor={formatarNumero(perfil.partidasTotais)} rotulo="Partidas" />
           </div>
 
@@ -169,13 +162,13 @@ export default function Perfil() {
               Este jogador ainda não tem pontuação no ranking.
             </p>
           )}
-        </div>
+        </Container>
       </section>
 
-      <section className="border-t border-line bg-brand-soft py-14 md:py-18">
-        <div className={larguraPagina}>
-          <Eyebrow>DESBLOQUEADAS</Eyebrow>
-          <h2 className="mt-1.75 text-2xl font-semibold tracking-tight">
+      <section className="border-t border-line bg-brand-soft py-14 md:py-16">
+        <Container className="max-w-4xl">
+          <Eyebrow>Desbloqueadas</Eyebrow>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">
             Conquistas ({conquistas.length})
           </h2>
 
@@ -188,7 +181,7 @@ export default function Perfil() {
                 return (
                   <li
                     key={c.id}
-                    className="flex items-start gap-3.5 rounded-xl border border-line bg-surface p-4"
+                    className="flex items-start gap-4 rounded-xl border border-line bg-surface p-4"
                   >
                     <span className="text-3xl leading-none" aria-hidden="true">
                       {c.icon}
@@ -212,7 +205,7 @@ export default function Perfil() {
             <ArrowLeft aria-hidden="true" size={18} />
             Voltar ao ranking
           </Link>
-        </div>
+        </Container>
       </section>
     </main>
   );

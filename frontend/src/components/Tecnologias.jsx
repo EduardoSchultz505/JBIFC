@@ -1,15 +1,15 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 const tecnologias = [
   {
     nome: "React",
     texto:
-      "Biblioteca de JavaScript para montar interfaces. O site é dividido em componentes reutilizáveis, como o carrossel e a tela do jogo, que aparecem em mais de uma página e se atualizam sozinhos quando os dados mudam. É ele que cuida das páginas de início, jogar, ranking, como jogar e equipe.",
+      "Biblioteca de JavaScript para montar interfaces. O site é dividido em componentes reutilizáveis, como a tela do jogo e o ranking, que se atualizam sozinhos quando os dados mudam. É ele que cuida das páginas e da navegação entre elas.",
   },
   {
     nome: "Tailwind CSS",
     texto:
-      "Framework de CSS que estiliza o site por classes escritas direto no código, como cores, espaçamentos e tamanhos de texto. Com ele o visual fica consistente entre as páginas, se adapta a telas de celular e de computador e também ajuda a controlar animações, como a do carrossel dos minijogos.",
+      "Framework de CSS que estiliza o site por classes escritas direto no código, como cores, espaçamentos e tamanhos de texto. Com ele o visual fica consistente entre as páginas e se adapta a telas de celular e de computador.",
   },
   {
     nome: "Phaser",
@@ -31,23 +31,47 @@ const tecnologias = [
 export default function Tecnologias() {
   const [ativa, setAtiva] = useState(0);
   const id = useId();
+  const abas = useRef([]);
+
+  function aoTeclar(e) {
+    const total = tecnologias.length;
+    let prox;
+    if (e.key === "ArrowRight") prox = (ativa + 1) % total;
+    else if (e.key === "ArrowLeft") prox = (ativa - 1 + total) % total;
+    else if (e.key === "Home") prox = 0;
+    else if (e.key === "End") prox = total - 1;
+    else return;
+
+    e.preventDefault();
+    setAtiva(prox);
+    abas.current[prox]?.focus();
+  }
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2.5">
+      <div
+        role="tablist"
+        aria-label="Tecnologias utilizadas"
+        onKeyDown={aoTeclar}
+        className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
+      >
         {tecnologias.map((tec, i) => {
           const selecionada = i === ativa;
           return (
             <button
               key={tec.nome}
+              ref={(el) => (abas.current[i] = el)}
+              id={`${id}-aba-${i}`}
               type="button"
-              aria-pressed={selecionada}
-              aria-controls={`${id}-texto`}
+              role="tab"
+              aria-selected={selecionada}
+              aria-controls={`${id}-painel-${i}`}
+              tabIndex={selecionada ? 0 : -1}
               onClick={() => setAtiva(i)}
-              className={`min-h-11 cursor-pointer rounded-lg border px-3.5 text-sm font-semibold transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+              className={`min-h-11 cursor-pointer rounded-lg border px-4 text-sm font-semibold transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 selecionada
                   ? "border-brand bg-brand text-white"
-                  : "border-brand-line bg-brand-soft text-brand hover:border-brand"
+                  : "border-line bg-brand-soft text-brand hover:border-brand"
               }`}
             >
               {tec.nome}
@@ -56,13 +80,21 @@ export default function Tecnologias() {
         })}
       </div>
 
-      <p
-        id={`${id}-texto`}
-        aria-live="polite"
-        className="mt-5 min-h-28 max-w-[64ch] md:min-h-24 text-[15px] leading-[1.55] text-muted"
-      >
-        {tecnologias[ativa].texto}
-      </p>
+      <div className="mt-5 grid">
+        {tecnologias.map((tec, i) => (
+          <p
+            key={tec.nome}
+            id={`${id}-painel-${i}`}
+            role="tabpanel"
+            aria-labelledby={`${id}-aba-${i}`}
+            className={`col-start-1 row-start-1 max-w-prose text-base leading-relaxed text-muted ${
+              i === ativa ? "" : "invisible"
+            }`}
+          >
+            {tec.texto}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }

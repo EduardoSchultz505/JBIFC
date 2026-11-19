@@ -1,153 +1,163 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
-import axios from 'axios'
-import { ArrowLeft, ArrowRight, RotateCw } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { Link } from "react-router";
+import axios from "axios";
+import { ArrowLeft, ArrowRight, RotateCw } from "lucide-react";
+import Container from "../components/Container";
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
-const API_URL_LOCAL = import.meta.env.DEV
-  ? 'http://localhost:5000'
-  : API_URL
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+const API_URL_LOCAL = import.meta.env.DEV ? "http://localhost:5000" : API_URL;
+
+const colunas = "grid-cols-[3.5rem_1fr_4rem] md:grid-cols-[6rem_1fr_7rem]";
+
+const botaoBase =
+  "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2.5 rounded-lg border px-6 text-base font-semibold transition duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+const botaoPrimario = `${botaoBase} border-transparent bg-brand text-white hover:bg-brand-hover`;
+const botaoSecundario = `${botaoBase} border-line bg-surface hover:border-brand hover:bg-subtle`;
+
+function Mensagem({ titulo, texto, role, children }) {
+  return (
+    <div
+      role={role}
+      className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-line bg-surface p-6 text-center md:min-h-80 md:p-10"
+    >
+      {children}
+      <h2 className="text-xl font-semibold">{titulo}</h2>
+      <p className="mt-2 max-w-prose text-sm leading-normal text-muted">{texto}</p>
+    </div>
+  );
+}
 
 export default function Ranking() {
-  const [state, setState] = useState('carregando') 
-  const [ranking, setRanking] = useState([])
-  const [tentativa, setTentativa] = useState(0)
+  const [estado, setEstado] = useState("carregando"); 
+  const [ranking, setRanking] = useState([]);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController()
-
+    const controller = new AbortController();
     if (!API_URL_LOCAL) {
-      console.error('[Ranking] VITE_API_URL não está configurada.')
-      queueMicrotask(() => setState('erro'))
-      return () => controller.abort()
+      console.error("[Ranking] VITE_API_URL não está configurada.");
+      queueMicrotask(() => setEstado("erro"));
+      return () => controller.abort();
     }
-
-    axios
-      .get(`${API_URL_LOCAL}/ranking`, {
+    axios.get(`${API_URL_LOCAL}/ranking`, {
         signal: controller.signal,
-        timeout: 70000, 
+        timeout: 70000,
       })
       .then(({ data }) => {
-        setRanking(data)
-        setState(data.length === 0 ? 'vazio' : 'pronto')
+        
+        if (!Array.isArray(data)) throw new Error("Resposta inválida");
+        setRanking(data);
+        setEstado(data.length === 0 ? "vazio" : "pronto");
       })
       .catch((err) => {
-        if (axios.isCancel(err)) return
-        console.error(err)
-        setState('erro')
-      })
-
-    return () => controller.abort()
-  }, [tentativa])
-
+        if (axios.isCancel(err)) return;
+        console.error(err);
+        setEstado("erro");
+      });
+    return () => controller.abort();
+  }, [tentativa]);
   function tentarDeNovo() {
-    setState('carregando')
-    setTentativa((n) => n + 1)
+    setEstado("carregando");
+    setTentativa((n) => n + 1);
   }
-
   return (
-    <main className="flex-1 pt-12 pb-18 md:pt-16 md:pb-22">
-      <div className="mx-auto w-[calc(100%-32px)] max-w-240 md:w-[calc(100%-48px)]">
-        <div className="mb-9.5 md:mb-12">
-          <p className="text-xs leading-snug font-bold tracking-[.11em] text-brand">CLASSIFICAÇÃO GERAL</p>
-          <h1 className="mt-2.25 text-[30px] leading-[1.15] font-bold tracking-tight md:text-[32px]">Ranking</h1>
-          <p className="mt-3.5 max-w-[62ch] text-base leading-[1.55] text-muted md:text-[17px]">
+    <main className="flex-1 pt-12 pb-16 md:pt-16 md:pb-24">
+      <Container className="max-w-5xl">
+        <header className="mb-10 md:mb-12">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">
+            Classificação geral
+          </p>
+          <h1 className="mt-2 text-3xl font-bold leading-tight tracking-tight md:text-4xl">
+            Ranking
+          </h1>
+          <p className="mt-4 max-w-prose text-base leading-relaxed text-muted md:text-lg">
             Veja a pontuação de todos os usuários
           </p>
-        </div>
-
-        {state === 'pronto' && (
+        </header>
+        {estado === "pronto" && (
           <div
-            className="overflow-hidden rounded-xl border border-line bg-surface"
             role="table"
             aria-label="Classificação dos jogadores"
+            className="overflow-hidden rounded-xl border border-line bg-surface"
           >
             <div
-              className="grid min-h-12 grid-cols-[55px_1fr_66px] items-center border-b border-line bg-subtle px-3.5 text-xs font-semibold tracking-[.04em] text-muted md:grid-cols-[90px_1fr_110px] md:px-6"
               role="row"
+              className={`grid ${colunas} min-h-12 items-center border-b border-line bg-subtle px-4 text-xs font-semibold tracking-wide text-muted md:px-6`}
             >
               <span role="columnheader">Pos.</span>
               <span role="columnheader">Nome</span>
-              <span className="text-right" role="columnheader">Pontos</span>
+              <span role="columnheader" className="text-right">
+                Pontos
+              </span>
             </div>
-
             {ranking.map((jogador) => {
-              const vencedor = jogador.posicao === 1
+              const primeiro = jogador.posicao === 1;
               return (
                 <div
-                  className={`grid min-h-14.5 grid-cols-[55px_1fr_66px] items-center border-b border-line px-3.5 text-[15px] last:border-b-0 md:min-h-15.5 md:grid-cols-[90px_1fr_110px] md:px-6 ${
-                    vencedor ? 'bg-sun-soft' : ''
-                  }`}
                   key={jogador.usuario}
                   role="row"
+                  className={`grid ${colunas} min-h-14 items-center border-b border-line px-4 text-base last:border-b-0 md:min-h-16 md:px-6 ${
+                    primeiro ? "bg-sun-soft" : ""
+                  }`}
                 >
-                  <span className={`tabular-nums ${vencedor ? 'font-bold text-sun-ink' : 'text-muted'}`} role="cell">
-                    {String(jogador.posicao).padStart(2, '0')}
+                  <span
+                    role="cell"
+                    className={`tabular-nums ${primeiro ? "font-bold text-brand" : "text-muted"}`}
+                  >
+                    {String(jogador.posicao).padStart(2, "0")}
                   </span>
-                  <strong role="cell">{jogador.usuario}</strong>
-                  <span className="text-right font-bold tabular-nums" role="cell">
-                    {Number(jogador.pontuacao).toLocaleString('pt-BR')}
+                  <span role="cell" className="min-w-0 pr-2">
+                    <Link
+                      to={`/perfil/${encodeURIComponent(jogador.usuario)}`}
+                      className="block truncate font-semibold hover:text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    >
+                      {jogador.usuario}
+                    </Link>
+                  </span>
+                  <span role="cell" className="text-right font-bold tabular-nums">
+                    {Number(jogador.pontuacao).toLocaleString("pt-BR")}
                   </span>
                 </div>
-              )
+              );
             })}
           </div>
         )}
-
-        {state === 'carregando' && (
-          <div className="flex min-h-82.5 flex-col items-center justify-center rounded-xl border border-line bg-surface px-5 py-7.5 text-center md:min-h-90 md:p-10">
+        {estado === "carregando" && (
+          <Mensagem
+            role="status"
+            titulo="Carregando o ranking..."
+            texto="Na primeira vez do dia, o servidor pode levar até um minuto para acordar."
+          >
             <span
               aria-hidden="true"
-              className="size-9.5 animate-spin rounded-full border-2 border-brand-soft border-t-brand"
+              className="mb-5 size-10 animate-spin rounded-full border-2 border-line border-t-brand"
             />
-            <h2 className="mt-5 text-xl font-semibold">Carregando o ranking...</h2>
-            <p className="mt-2.5 max-w-[50ch] text-sm leading-normal text-muted">
-              Na primeira vez do dia, o servidor pode levar até um minuto para acordar.
-            </p>
-          </div>
+          </Mensagem>
         )}
-
-        {state === 'erro' && (
-          <div className="flex min-h-82.5 flex-col items-center justify-center rounded-xl border border-line bg-surface px-5 py-7.5 text-center md:min-h-90 md:p-10">
-            <h2 className="text-xl font-semibold">Não foi possível carregar o ranking.</h2>
-            <p className="mt-2.5 max-w-[50ch] text-sm leading-normal text-muted">
-              Verifique sua conexão e tente novamente.
-            </p>
-            <button
-              className="mt-6 inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-line bg-surface px-5.5 text-[15px] font-semibold text-ink transition duration-150 hover:-translate-y-px hover:border-line-strong hover:bg-subtle"
-              onClick={tentarDeNovo}
-              type="button"
-            >
+        {estado === "erro" && (
+          <Mensagem
+            role="alert"
+            titulo="Não foi possível carregar o ranking."
+            texto="Verifique sua conexão e tente novamente."
+          >
+            <button type="button" onClick={tentarDeNovo} className={`${botaoSecundario} order-last mt-6`}>
               <RotateCw aria-hidden="true" size={18} />
               Tentar de novo
             </button>
-          </div>
+          </Mensagem>
         )}
-
-        {state === 'vazio' && (
-          <div className="flex min-h-82.5 flex-col items-center justify-center rounded-xl border border-line bg-surface px-5 py-7.5 text-center md:min-h-90 md:p-10">
-            <h2 className="text-xl font-semibold">Ninguém jogou ainda.</h2>
-            <p className="mt-2.5 max-w-[50ch] text-sm leading-normal text-muted">Seja o primeiro!</p>
-          </div>
-        )}
-
+        {estado === "vazio" && <Mensagem titulo="Ninguém jogou ainda." texto="Seja o primeiro!" />}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-line bg-surface px-5.5 text-[15px] font-semibold text-ink transition duration-150 hover:-translate-y-px hover:border-line-strong hover:bg-subtle"
-            to="/"
-          >
-            <ArrowLeft aria-hidden="true" size={18} strokeWidth={1.8} />
+          <Link className={botaoSecundario} to="/">
+            <ArrowLeft aria-hidden="true" size={18} />
             Voltar ao início
           </Link>
-          <Link
-            className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-transparent bg-brand px-5.5 text-[15px] font-semibold text-white transition duration-150 hover:-translate-y-px hover:bg-brand-hover"
-            to="/jogar"
-          >
+          <Link className={botaoPrimario} to="/jogar">
             Jogar agora
-            <ArrowRight aria-hidden="true" size={18} strokeWidth={1.8} />
+            <ArrowRight aria-hidden="true" size={18} />
           </Link>
         </div>
-      </div>
+      </Container>
     </main>
-  )
+  );
 }

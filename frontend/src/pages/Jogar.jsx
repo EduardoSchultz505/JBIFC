@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize, CirclePlay } from "lucide-react";
+import { Maximize, CirclePlay, Monitor } from "lucide-react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router";
 import { criarJogo } from "../game/loadGame";
+import Container from "../components/Container";
 import {
   evaluateAchievementUnlocks,
   readAchievementList,
@@ -27,6 +28,10 @@ export default function Jogar() {
   const [authCarregando, setAuthCarregando] = useState(() => Boolean(localStorage.getItem("jbifc_token")) && Boolean(API_URL_LOCAL));
   const [authErro, setAuthErro] = useState("");
   const [conquistasNovas, setConquistasNovas] = useState([]);
+  
+  const [mobile] = useState(
+    () => window.matchMedia("(hover: none) and (pointer: coarse)").matches,
+  );
   const navigate = useNavigate();
 
   const containerRef = useRef(null);
@@ -36,12 +41,12 @@ export default function Jogar() {
   const jogadorIdRef = useRef(null);
   const usuarioRef = useRef("");
   const tokenRef = useRef(token);
-  // Resumo da última partida, enviado junto com a pontuação
+  
   const resumoRef = useRef(null);
 
   const logado = Boolean(token && usuario);
 
-  // Valida o token salvo e descobre quem é o jogador
+  
   useEffect(() => {
     if (!token) return;
     if (!API_URL_LOCAL) return;
@@ -55,7 +60,7 @@ export default function Jogar() {
       jogadorIdRef.current = data.id;
       tokenRef.current = token;
     }).catch((erro) => {
-      // Só descarta o token se o servidor disse que ele é inválido
+      
       if (erro.response?.status !== 401) {
         setAuthErro("Não foi possível verificar seu login agora. Recarregue a página para tentar de novo.");
         return;
@@ -69,7 +74,7 @@ export default function Jogar() {
     }).finally(() => setAuthCarregando(false));
   }, [token]);
 
-  // Só para quem joga sem conta: conquista decorativa, fica no localStorage
+  
   const processarConquistasDemo = useCallback((resumoFinal) => {
     const contexto = { userId: null, demoMode: true };
     const existentes = readAchievementList(contexto);
@@ -84,11 +89,11 @@ export default function Jogar() {
     setConquistasNovas(novas);
   }, []);
 
-  // Ranking e conquistas numa requisição só; o servidor valida e decide
+  
   const salvarPontuacao = useCallback(async (pontuacaoCapturada) => {
     if (salvamentoEmAndamentoRef.current || pontuacaoSalvaRef.current) return;
 
-    // Sem login não há o que salvar; o aviso da tela já explica isso
+    
     if (!tokenRef.current || !jogadorIdRef.current || !usuarioRef.current) return;
 
     const pontuacaoFinal = Number(pontuacaoCapturada);
@@ -113,7 +118,7 @@ export default function Jogar() {
     setEstadoSalvamento("salvando");
     setMensagem("");
 
-    // O id do jogador vai pelo token, não pelo corpo
+    
     const dados = {
       pontuacao: pontuacaoFinal,
       resumo: resumoRef.current,
@@ -136,7 +141,7 @@ export default function Jogar() {
       const melhor = Number(resposta.data.registro?.pontuacao ?? pontuacaoFinal);
       const posicao = resposta.data.posicao;
       if (melhor > pontuacaoFinal) {
-        // O ranking só guarda a melhor pontuação de cada jogador
+        
         setMensagem(`Sua melhor pontuação continua sendo ${melhor}${posicao ? ` (${posicao}º lugar)` : ""}.`);
       } else {
         setMensagem(posicao ? `Pontuação salva! Sua posição: ${posicao}º` : "Pontuação salva com sucesso!");
@@ -204,7 +209,7 @@ export default function Jogar() {
           setGameOver(pontuacaoExata);
 
           if (tokenRef.current && jogadorIdRef.current) {
-            salvarPontuacao(pontuacaoExata); // ranking e conquistas numa requisição só
+            salvarPontuacao(pontuacaoExata); 
           } else {
             processarConquistasDemo(resumoNormalizado);
           }
@@ -279,8 +284,21 @@ export default function Jogar() {
   }
 
   return (
-    <main className="flex-1 pt-12 pb-18 md:pt-16 md:pb-22">
-      <div className="mx-auto w-[calc(100%-32px)] max-w-275 md:w-[calc(100%-48px)]">
+    <main className="flex-1 pt-12 pb-16 md:pt-16 md:pb-24">
+      <Container className="max-w-6xl">
+        {mobile && (
+          <div
+            role="note"
+            className="mb-4 flex items-start gap-3 rounded-lg border border-sun bg-sun/15 p-4 text-sm leading-snug"
+          >
+            <Monitor aria-hidden="true" size={20} className="mt-0.5 shrink-0" />
+            <p>
+              <strong>Este jogo só funciona em computador.</strong> Em celular
+              e tablet os controles podem não responder. Abra esta página em um
+              computador para jogar.
+            </p>
+          </div>
+        )}
 
         <section className="overflow-hidden rounded-xl border border-game-line bg-game text-white shadow-game">
           <header className="flex items-center justify-between border-b border-white/10 bg-game px-4 py-3">
@@ -289,42 +307,45 @@ export default function Jogar() {
             </span>
 
             <button
+              type="button"
               onClick={alternarTelaCheia}
               disabled={!iniciado}
               title={telaCheia ? "Sair da tela cheia" : "Tela cheia"}
               aria-label={telaCheia ? "Sair da tela cheia" : "Tela cheia"}
-              className="rounded-md border border-white/15 p-2 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md border border-white/15 p-2.5 transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Maximize size={18} />
+              <Maximize aria-hidden="true" size={18} />
             </button>
           </header>
 
           <div className="relative aspect-video w-full overflow-hidden bg-game">
             {!iniciado && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-game">
-                <span aria-hidden="true" className="absolute top-3 left-3 size-5.5 border-t border-l border-white/10 md:top-5.5 md:left-5.5 md:size-9.5" />
-                <span aria-hidden="true" className="absolute right-3 bottom-3 size-5.5 border-r border-b border-white/10 md:right-5.5 md:bottom-5.5 md:size-9.5" />
                 {authCarregando ? (
-                  <p className="text-sm text-white/70">Verificando login...</p>
+                  <p role="status" className="text-sm text-white/70">Verificando login...</p>
                 ) : (
                   <div className="flex flex-col items-center">
                     <p className="mb-4 text-sm font-semibold text-white/80">
                       {logado ? `Jogando como ${usuario}` : "Jogando sem conta"}
                     </p>
                     {authErro && (
-                      <p className="mb-4 max-w-xs text-center text-xs text-[#CD191E]" role="alert">
+                      <p className="mb-4 max-w-xs text-center text-xs text-danger" role="alert">
                         {authErro}
                       </p>
                     )}
                     <button
+                      type="button"
                       onClick={() => setIniciado(true)}
-                      className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621]"
+                      className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                     >
-                      <CirclePlay size={24} strokeWidth={2} />
+                      <CirclePlay aria-hidden="true" size={24} strokeWidth={2} />
                       Jogar
                     </button>
                     {!logado && (
-                      <Link to="/login" className="mt-4 text-sm font-semibold text-[#67F5A5] underline">
+                      <Link
+                        to="/login"
+                        className="mt-4 flex min-h-11 items-center text-sm font-semibold text-[#67F5A5] underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                      >
                         Entrar ou criar conta
                       </Link>
                     )}
@@ -339,20 +360,20 @@ export default function Jogar() {
               className={`absolute inset-0 ${iniciado ? "visible" : "invisible"}`}
             >
               {gameOver !== null && (
-                <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-[#151515]/95 px-4">
-                  <div className="w-full max-w-sm rounded-xl border border-white/15 bg-[#252525] p-5 text-center shadow-game md:p-7">
-                    <h2 className="text-xl font-bold text-[#CD191E] md:text-2xl">
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#151515]/95 px-4">
+                  <div className="w-full max-w-sm rounded-xl border border-white/15 bg-[#252525] p-5 text-center shadow-game md:p-8">
+                    <h2 className="text-xl font-bold text-danger md:text-2xl">
                       GAME OVER
                     </h2>
                     <p className="mt-3 text-sm text-white/80 md:text-base">
                       Pontuação final:{" "}
-                      <strong className="text-[#FFC93C]">{gameOver}</strong>
+                      <strong className="text-sun">{gameOver}</strong>
                     </p>
 
                     {logado && mensagem && (
                       <p
                         className={`mt-3 text-sm ${
-                          estadoSalvamento === "salvo" ? "text-[#67F5A5]" : "text-[#CD191E]"
+                          estadoSalvamento === "salvo" ? "text-[#67F5A5]" : "text-danger"
                         }`}
                         role="alert"
                       >
@@ -361,14 +382,14 @@ export default function Jogar() {
                     )}
 
                     {conquistasNovas.length > 0 && (
-                      <div className="mt-4 rounded-xl border border-[#FFC93C]/70 bg-[#fff6d6]/10 p-3 text-left">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFC93C]">
+                      <div className="mt-4 rounded-xl border border-sun/70 bg-sun-soft/10 p-3 text-left">
+                        <p className="text-xs font-bold uppercase tracking-widest text-sun">
                           Novas conquistas
                         </p>
                         <ul className="mt-3 space-y-2">
                           {conquistasNovas.map((item) => (
                             <li key={item.id} className="flex items-start gap-3 rounded-lg bg-[#151515]/40 p-2">
-                              <span className="flex size-9 items-center justify-center rounded-lg bg-[#FFC93C]/15 text-xl">
+                              <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-lg bg-sun/15 text-xl">
                                 {item.icon}
                               </span>
                               <div>
@@ -385,7 +406,7 @@ export default function Jogar() {
                       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                         <button
                           type="button"
-                          className="min-h-11 flex-1 rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
+                          className="min-h-11 flex-1 cursor-pointer rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
                           onClick={() => salvarPontuacao(gameOver)}
                           disabled={estadoSalvamento === "salvando" || estadoSalvamento === "salvo"}
                         >
@@ -393,7 +414,7 @@ export default function Jogar() {
                         </button>
                         <button
                           type="button"
-                          className="min-h-11 flex-1 rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
+                          className="min-h-11 flex-1 cursor-pointer rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
                           onClick={voltarAoMenu}
                         >
                           Voltar ao menu
@@ -406,7 +427,7 @@ export default function Jogar() {
                         </p>
                         <button
                           type="button"
-                          className="mt-5 min-h-11 w-full rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
+                          className="mt-5 min-h-11 w-full cursor-pointer rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
                           onClick={voltarAoMenu}
                         >
                           Voltar ao menu
@@ -417,7 +438,7 @@ export default function Jogar() {
                     {logado && estadoSalvamento === "salvo" && (
                       <button
                         type="button"
-                        className="mt-3 min-h-11 w-full rounded-lg border border-[#FFC93C] px-4 font-semibold text-[#FFC93C] hover:bg-white/10"
+                        className="mt-3 min-h-11 w-full cursor-pointer rounded-lg border border-sun px-4 font-semibold text-sun hover:bg-white/10"
                         onClick={() => navigate("/ranking")}
                       >
                         Ver ranking
@@ -429,7 +450,7 @@ export default function Jogar() {
             </div>
           </div>
         </section>
-      </div>
+      </Container>
     </main>
   );
 }

@@ -1,59 +1,47 @@
 import { Link } from "react-router";
+import Container from "./Container";
+
+const LINKS = [
+  ["/", "Início"],
+  ["/jogar", "Jogar"],
+  ["/ranking", "Ranking"],
+  ["/como-jogar", "Como jogar"],
+  ["/equipe", "Equipe"],
+  ["/login", "Entrar"],
+];
 
 export default function Footer() {
   return (
     <footer className="mt-auto bg-footer text-white">
-      <div className="mx-auto flex min-h-27 w-[calc(100%-32px)] max-w-275 flex-col items-start gap-6 py-8 md:w-[calc(100%-48px)] md:flex-row md:items-center md:justify-between md:gap-0 md:py-0">
-        <div className="flex items-center gap-3.5">
-          <img src="/game/JBIFC.svg" alt="JBIFC" className="w-12" />
-          <img src="/game/IFC.svg" alt="JBIFC" className="w-12" />
+      <Container className="flex max-w-6xl flex-col items-start gap-6 py-8 md:flex-row md:items-center md:justify-between md:gap-8 md:py-10">
+        <div className="flex shrink-0 items-center gap-4">
+          <img src="/game/JBIFC.svg" alt="JBIFC" className="h-12 w-auto" />
+          <img
+            src="/game/IFC.svg"
+            alt="Instituto Federal Catarinense"
+            className="h-12 w-auto"
+          />
         </div>
 
         <nav
           aria-label="Navegação do rodapé"
-          className="grid w-full grid-cols-2 gap-x-5 gap-y-0.5 md:flex md:w-auto md:gap-7"
+          className="flex flex-wrap gap-x-6 gap-y-1 md:justify-end md:gap-x-8"
         >
-          <Link
-            className="flex min-h-11 items-center text-left text-sm text-white/75 hover:text-white hover:underline hover:underline-offset-5"
-            to="/"
-          >
-            Início
-          </Link>
-
-          <Link
-            className="flex min-h-11 items-center text-left text-sm text-white/75 hover:text-white hover:underline hover:underline-offset-5"
-            to="/jogar"
-          >
-            Jogar
-          </Link>
-
-          <Link
-            className="flex min-h-11 items-center text-left text-sm text-white/75 hover:text-white hover:underline hover:underline-offset-5"
-            to="/ranking"
-          >
-            Ranking
-          </Link>
-
-          <Link
-            className="flex min-h-11 items-center text-left text-sm text-white/75 hover:text-white hover:underline hover:underline-offset-5"
-            to="/como-jogar"
-          >
-            Como jogar
-          </Link>
-
-          <Link
-            className="flex min-h-11 items-center text-left text-sm text-white/75 hover:text-white hover:underline hover:underline-offset-5"
-            to="/equipe"
-          >
-            Equipe
-          </Link>
+          {LINKS.map(([rota, rotulo]) => (
+            <Link
+              key={rota}
+              to={rota}
+              className="flex min-h-11 items-center rounded-md text-sm text-white/80 hover:text-white hover:underline hover:underline-offset-4 focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              {rotulo}
+            </Link>
+          ))}
         </nav>
-      </div>
+      </Container>
 
-      <div className="mx-auto w-[calc(100%-32px)] max-w-275 border-t border-white/15 py-5 text-[13px] leading-normal text-white/60 md:w-[calc(100%-48px)]">
-        Trabalho de Desenvolvimento Web 2, Instituto Federal Catarinense -
-        Campus Concórdia.
-      </div>
+      <Container className="max-w-6xl border-t border-white/15 py-5 text-sm leading-normal text-white/70">
+        Trabalho de Desenvolvimento Web 2, Instituto Federal Catarinense - Campus Concórdia.
+      </Container>
     </footer>
   );
 }
