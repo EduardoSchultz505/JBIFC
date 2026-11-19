@@ -14,7 +14,6 @@ export default function Carrossel() {
     <div className="overflow-hidden motion-reduce:overflow-x-auto">
       <h2 className="sr-only">Minijogos</h2>
 
-      {/* 4 cópias: a animação anda 25% (uma cópia) e recomeça sem salto */}
       <ul className="flex w-max animate-carrossel motion-reduce:animate-none">
         {COPIAS.map((copia) =>
           jogos.map((item) => (

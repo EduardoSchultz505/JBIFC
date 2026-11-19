@@ -4,9 +4,6 @@ import axios from "axios";
 import { ArrowLeft, ArrowRight, RotateCw } from "lucide-react";
 import Container from "../components/Container";
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
-const API_URL_LOCAL = import.meta.env.DEV ? "http://localhost:5000" : API_URL;
-
 const colunas = "grid-cols-[3.5rem_1fr_4rem] md:grid-cols-[6rem_1fr_7rem]";
 
 const botaoBase =
@@ -34,12 +31,7 @@ export default function Ranking() {
 
   useEffect(() => {
     const controller = new AbortController();
-    if (!API_URL_LOCAL) {
-      console.error("[Ranking] VITE_API_URL não está configurada.");
-      queueMicrotask(() => setEstado("erro"));
-      return () => controller.abort();
-    }
-    axios.get(`${API_URL_LOCAL}/ranking`, {
+    axios.get("/api/ranking", {
         signal: controller.signal,
         timeout: 70000,
       })

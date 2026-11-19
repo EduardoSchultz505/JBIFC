@@ -12,11 +12,6 @@ import {
   writePartidasTotais,
 } from "../config/achievements";
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
-const API_URL_LOCAL = import.meta.env.DEV
-  ? "http://localhost:5000"
-  : API_URL;
-
 export default function Jogar() {
   const [iniciado, setIniciado] = useState(false);
   const [telaCheia, setTelaCheia] = useState(false);
@@ -25,7 +20,7 @@ export default function Jogar() {
   const [mensagem, setMensagem] = useState("");
   const [token, setToken] = useState(() => localStorage.getItem("jbifc_token"));
   const [usuario, setUsuario] = useState("");
-  const [authCarregando, setAuthCarregando] = useState(() => Boolean(localStorage.getItem("jbifc_token")) && Boolean(API_URL_LOCAL));
+  const [authCarregando, setAuthCarregando] = useState(() => Boolean(localStorage.getItem("jbifc_token")));
   const [authErro, setAuthErro] = useState("");
   const [conquistasNovas, setConquistasNovas] = useState([]);
   
@@ -49,9 +44,8 @@ export default function Jogar() {
   
   useEffect(() => {
     if (!token) return;
-    if (!API_URL_LOCAL) return;
 
-    axios.get(`${API_URL_LOCAL}/api/usuario`, {
+    axios.get("/api/usuario", {
       headers: { Authorization: `Bearer ${token}` },
       timeout: 70000,
     }).then(({ data }) => {
@@ -106,13 +100,7 @@ export default function Jogar() {
       setEstadoSalvamento("erro");
       setMensagem("Os dados da partida não foram encontrados.");
       return;
-    }
-    if (!API_URL_LOCAL) {
-      setEstadoSalvamento("erro");
-      setMensagem("VITE_API_URL não está configurada no frontend.");
-      console.error("[Ranking] VITE_API_URL não está configurada.");
-      return;
-    }
+    } 
 
     salvamentoEmAndamentoRef.current = true;
     setEstadoSalvamento("salvando");
@@ -129,7 +117,7 @@ export default function Jogar() {
     });
 
     try {
-      const resposta = await axios.post(`${API_URL_LOCAL}/ranking`, dados, {
+      const resposta = await axios.post("/api/ranking", dados, {
         headers: { Authorization: `Bearer ${tokenRef.current}` },
         timeout: 70000,
       });

@@ -21,13 +21,13 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim();
 const JWT_SECRET = process.env.JWT_SECRET?.trim();
 const JWT_EXPIRACAO = process.env.JWT_EXPIRACAO || "7d";
 
-// Origens do front separadas por vírgula, sem barra no fim (ex.: https://usuario.github.io)
+
 const ORIGENS_PERMITIDAS = (process.env.FRONTEND_URL || "http://localhost:5173,http://127.0.0.1:5173")
   .split(",")
   .map((o) => o.trim().replace(/\/$/, ""))
   .filter(Boolean);
 
-// Falha logo na partida, antes de aceitar qualquer requisição
+
 if (!JWT_SECRET) {
   console.error("[Auth] JWT_SECRET não está configurada. Defina a variável antes de iniciar o servidor.");
   process.exit(1);
@@ -40,16 +40,16 @@ const USUARIO_VALIDO = /^[\p{L}\p{N}_-]{3,20}$/u;
 const INT_MAX = 2147483647;
 const LIMITE_RANKING_MAX = 100;
 
-// Hash descartável: iguala o tempo do login quando o usuário não existe
+
 const HASH_FALSO = bcrypt.hashSync("senha-falsa-para-igualar-o-tempo", 10);
 
-// O PostgREST trata * como curinga no ilike; o regex de usuário já barra * e %,
-// aqui só o _ e a barra precisam ser literais
+
+
 const escaparLike = (texto) => texto.replace(/[\\%_]/g, "\\$&");
 
 const app = express();
 app.disable("x-powered-by");
-app.set("trust proxy", 1); // atrás do proxy do Render, para o rate limit ver o IP real
+app.set("trust proxy", 1); 
 
 function buildSupabaseHeaders({ useServiceRole = true } = {}) {
   const apiKey = useServiceRole
@@ -154,8 +154,8 @@ async function supabaseFetch(table, { method = "GET", query = "", body = null, u
 app.use(cors({ origin: ORIGENS_PERMITIDAS }));
 app.use(express.json({ limit: "10kb" }));
 
-// Resposta enxuta: o diagnóstico detalhado fica só no log do servidor
-app.get("/health", async (_req, res) => {
+
+app.get("/api/health", async (_req, res) => {
   try {
     await supabaseFetch("jogadores", { query: "select=id&limit=1" });
     res.json({ banco: "ok" });
@@ -175,7 +175,7 @@ const limiteGeral = rateLimit({
   message: mensagemLimite("Muitas requisições. Aguarde um instante."),
 });
 
-// Só tentativas que falham contam, para o uso normal não ser bloqueado
+
 const limiteLogin = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
@@ -199,14 +199,14 @@ function validarUsuarioESenha(usuario, senha) {
   if (typeof usuario !== "string" || !USUARIO_VALIDO.test(usuario.trim())) {
     return "Use de 3 a 20 letras, números, _ ou -.";
   }
-  // O bcrypt limita a senha a 72 bytes, não a 72 caracteres
+  
   if (typeof senha !== "string" || senha.length < 8 || Buffer.byteLength(senha, "utf8") > 72) {
     return "A senha deve ter de 8 a 72 caracteres.";
   }
   return null;
 }
 
-// Busca exata (sem diferenciar maiúsculas) depois do ilike, para curinga nenhum enganar
+
 async function buscarJogadorPorNome(nome, campos = "id,usuario") {
   if (!USUARIO_VALIDO.test(nome)) return null;
   const achados = await supabaseFetch("jogadores", {
@@ -216,7 +216,7 @@ async function buscarJogadorPorNome(nome, campos = "id,usuario") {
   return lista.find((j) => j.usuario.toLowerCase() === nome.toLowerCase()) ?? null;
 }
 
-// Posição vem da view ranking_posicoes (ver supabase-schema.sql)
+
 async function buscarPosicao(jogadorId) {
   const rows = await supabaseFetch("ranking_posicoes", {
     query: `select=posicao,pontuacao,nivel&jogador_id=eq.${jogadorId}`,
@@ -248,7 +248,7 @@ function autenticar(req, res, next) {
 
   try {
     const dados = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
-    // O id entra em consultas, então só passa se for inteiro
+    
     if (!Number.isInteger(dados.id)) throw new Error("id inválido");
     req.usuario = dados;
     next();
@@ -257,7 +257,7 @@ function autenticar(req, res, next) {
   }
 }
 
-// Conta a partida e concede as conquistas. O total de partidas nunca vem do cliente.
+
 async function registrarPartida(jogadorId, resumo) {
   const [jogRows, existentes] = await Promise.all([
     supabaseFetch("jogadores", { query: `select=partidas_totais&id=eq.${jogadorId}` }),
@@ -348,7 +348,7 @@ app.post("/api/conta", limiteCadastro, async (req, res) => {
       token: criarToken(jogador.id, jogador.usuario),
     });
   } catch (err) {
-    // Duas contas simultâneas com o mesmo nome: quem barra é o índice único do banco
+    
     const mensagem = err.message || "";
     if (mensagem.includes("duplicate") || mensagem.includes("already")) {
       return res.status(409).json({ erro: "Este nome de usuário já está em uso." });
@@ -369,7 +369,7 @@ app.post("/api/login", limiteLogin, async (req, res) => {
 
   try {
     const jogador = await buscarJogadorPorNome(usuario, "id,usuario,senha_hash");
-    // Sempre roda o bcrypt, exista o usuário ou não
+    
     const senhaCorreta = await bcrypt.compare(senha, jogador?.senha_hash ?? HASH_FALSO);
 
     if (!jogador || !senhaCorreta) {
@@ -404,7 +404,7 @@ app.get("/api/usuario", autenticar, async (req, res) => {
   }
 });
 
-// Perfil público de um jogador (sem token, sem dados sensíveis)
+
 app.get("/api/usuarios/:usuario", async (req, res) => {
   const nome = String(req.params.usuario ?? "").trim();
 
@@ -423,7 +423,7 @@ app.get("/api/usuarios/:usuario", async (req, res) => {
       id: jogador.id,
       usuario: jogador.usuario,
       partidasTotais: Number(jogador.partidas_totais ?? 0),
-      // null se o jogador ainda não terminou nenhuma partida
+      
       ranking: posicao,
       conquistas: (Array.isArray(conquistasRows) ? conquistasRows : []).map(formatarConquista),
     });
@@ -458,9 +458,9 @@ app.get("/api/conquistas", autenticar, async (req, res) => {
   }
 });
 
-// Não existe POST /api/conquistas de propósito: conquista só nasce em POST /ranking
 
-app.get("/ranking", async (req, res) => {
+
+app.get("/api/ranking", async (req, res) => {
   try {
     const pedido = parseInt(req.query.limite, 10);
     const limite = Number.isInteger(pedido) && pedido > 0
@@ -483,8 +483,7 @@ app.get("/ranking", async (req, res) => {
   }
 });
 
-app.post("/ranking", autenticar, async (req, res) => {
-  // O id do jogador vem só do token, nunca do corpo
+app.post("/api/ranking", autenticar, async (req, res) => {
   const { pontuacao, resumo, nivel } = req.body || {};
   const nivelValido = nivel === undefined ? 0 : nivel;
 
@@ -516,7 +515,7 @@ app.post("/ranking", autenticar, async (req, res) => {
     const existente = Array.isArray(atual) ? atual[0] : null;
     const agora = new Date().toISOString();
 
-    // O ranking guarda só a melhor pontuação de cada jogador
+    
     if (!existente) {
       await supabaseFetch("ranking", {
         method: "POST",
@@ -532,7 +531,7 @@ app.post("/ranking", autenticar, async (req, res) => {
 
     const registro = await buscarPosicao(jogador.id);
 
-    // Falha nas conquistas não pode perder a pontuação, que já foi salva
+    
     let conquistasNovas = [];
     try {
       conquistasNovas = await registrarPartida(jogador.id, resumoValido);
@@ -556,7 +555,7 @@ app.post("/ranking", autenticar, async (req, res) => {
   }
 });
 
-// Sempre JSON, nunca a página de erro padrão do Express
+
 app.use((_req, res) => {
   res.status(404).json({ erro: "Rota não encontrada." });
 });
@@ -572,10 +571,17 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ erro: "Erro interno." });
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
+export default app;
 
-validarConfiguracaoSupabase().catch((err) => {
-  console.warn("[Banco] Verificação inicial do Supabase falhou sem bloquear a inicialização:", err.message || err);
-});
+if (process.env.VERCEL !== "1") {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
+
+  validarConfiguracaoSupabase().catch((err) => {
+    console.warn(
+      "[Banco] Verificação inicial do Supabase falhou sem bloquear a inicialização:",
+      err.message || err
+    );
+  });
+}

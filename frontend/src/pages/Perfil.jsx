@@ -4,8 +4,6 @@ import axios from "axios";
 import { ArrowLeft, RotateCw } from "lucide-react";
 import Container from "../components/Container";
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
-const API_URL_LOCAL = import.meta.env.DEV ? "http://localhost:5000" : API_URL;
 
 const ATRASO_AVISO_MS = 4000;
 
@@ -48,17 +46,14 @@ export default function Perfil() {
   const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPerfil(null);
     setErro(null);
     setDemorando(false);
-    if (!API_URL_LOCAL) {
-      setErro({ texto: "A URL da API não está configurada.", repetir: false });
-      return;
-    }
 
     const controller = new AbortController();
     const aviso = setTimeout(() => setDemorando(true), ATRASO_AVISO_MS);
-    axios.get(`${API_URL_LOCAL}/api/usuarios/${encodeURIComponent(nome)}`, {
+    axios.get(`/api/usuarios/${encodeURIComponent(nome)}`, {
         timeout: 70000,
         signal: controller.signal,
       })
@@ -77,7 +72,7 @@ export default function Perfil() {
       clearTimeout(aviso);
     };
   }, [nome, tentativa]);
-  
+
   if (erro) {
     return (
       <main className="flex-1 py-14 md:py-16">

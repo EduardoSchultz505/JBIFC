@@ -4,9 +4,6 @@ import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import Container from "../components/Container";
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
-const API_URL_LOCAL = import.meta.env.DEV ? "http://localhost:5000" : API_URL;
-
 const VAZIO = { usuario: "", senha: "", confirmar: "" };
 const USUARIO_VALIDO = /^[\p{L}\p{N}_-]{3,20}$/u;
 const MODOS = [
@@ -47,7 +44,6 @@ function Campo({ label, erro, children }) {
   );
 }
 
-
 const classeInput = (erro) =>
   `min-h-12 w-full rounded-lg border bg-surface px-4 text-base outline-none transition duration-150 placeholder:text-muted focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 ${
     erro ? "border-danger" : "border-line"
@@ -64,14 +60,14 @@ export default function Login() {
   const [carregando, setCarregando] = useState(false);
   const [verSenha, setVerSenha] = useState(false);
   const cadastro = modo === "cadastro";
-  
+
   function trocarModo(novo) {
     setModo(novo);
     setErros({});
     setErroServidor("");
     setValores((v) => ({ ...v, senha: "", confirmar: "" }));
   }
-  
+
   function aoTeclar(e) {
     const atual = MODOS.findIndex(([valor]) => valor === modo);
     const destino = {
@@ -106,17 +102,12 @@ export default function Login() {
       e.currentTarget.elements[primeiroErro]?.focus();
       return;
     }
-    if (!API_URL_LOCAL) {
-      setErroServidor("A URL da API não está configurada.");
-      return;
-    }
     setCarregando(true);
     try {
-      
       const rota = cadastro ? "conta" : "login";
       const corpo = { usuario: valores.usuario.trim(), senha: valores.senha };
-      
-      const resposta = await axios.post(`${API_URL_LOCAL}/api/${rota}`, corpo, {
+
+      const resposta = await axios.post(`/api/${rota}`, corpo, {
         timeout: 70000,
       });
       localStorage.setItem("jbifc_token", resposta.data.token);
@@ -125,7 +116,9 @@ export default function Login() {
       if (err.response?.data?.erro) {
         setErroServidor(err.response.data.erro);
       } else if (err.code === "ECONNABORTED" || !err.response) {
-        setErroServidor("Não foi possível falar com o servidor. Tente de novo em instantes.");
+        setErroServidor(
+          "Não foi possível falar com o servidor. Tente de novo em instantes.",
+        );
       } else {
         setErroServidor("Algo deu errado. Tente de novo.");
       }
@@ -206,13 +199,17 @@ export default function Login() {
                     id={campoId}
                     name="senha"
                     type={verSenha ? "text" : "password"}
-                    autoComplete={cadastro ? "new-password" : "current-password"}
+                    autoComplete={
+                      cadastro ? "new-password" : "current-password"
+                    }
                     value={valores.senha}
                     onChange={atualizar("senha")}
                     aria-invalid={!!erros.senha}
                     aria-describedby={descr}
                     className={`${classeInput(erros.senha)} pr-14`}
-                    placeholder={cadastro ? "Mínimo de 8 caracteres" : "Sua senha"}
+                    placeholder={
+                      cadastro ? "Mínimo de 8 caracteres" : "Sua senha"
+                    }
                   />
                   <button
                     type="button"
@@ -248,7 +245,10 @@ export default function Login() {
                 )}
               </Campo>
             )}
-            <div aria-live="polite" className="flex flex-col gap-2 empty:hidden">
+            <div
+              aria-live="polite"
+              className="flex flex-col gap-2 empty:hidden"
+            >
               {erroServidor && (
                 <p className="rounded-lg border border-danger bg-danger/10 px-4 py-2.5 text-sm text-danger">
                   {erroServidor}
@@ -256,7 +256,8 @@ export default function Login() {
               )}
               {carregando && (
                 <p className="text-sm text-muted">
-                  Na primeira vez o servidor pode levar até 1 minuto para acordar.
+                  Na primeira vez o servidor pode levar até 1 minuto para
+                  acordar.
                 </p>
               )}
             </div>
