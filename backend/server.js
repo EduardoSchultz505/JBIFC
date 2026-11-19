@@ -1,54 +1,144 @@
-import "dotenv/config";
+import path from "node:path";
+import dns from "node:dns";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
-import pg from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const { Pool } = pg;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, ".env"), quiet: true });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const SUPABASE_URL = process.env.SUPABASE_URL?.replace(/\/$/, "");
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim();
+const JWT_SECRET = process.env.JWT_SECRET?.trim();
+const JWT_EXPIRACAO = process.env.JWT_EXPIRACAO || "7d";
 
-function normalizarUrlPostgres(rawUrl) {
-  const url = rawUrl?.trim();
-  if (!url) return null;
+function buildSupabaseHeaders({ useServiceRole = true } = {}) {
+  const apiKey = useServiceRole
+    ? SUPABASE_SERVICE_ROLE_KEY
+    : SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
 
-  const separador = url.indexOf("://");
-  const ultimoArroba = url.lastIndexOf("@");
-  if (separador < 0 || ultimoArroba < 0) return url;
-
-  const prefixo = url.slice(0, separador + 3);
-  const autenticacao = url.slice(separador + 3, ultimoArroba);
-  const separadorSenha = autenticacao.indexOf(":");
-  if (separadorSenha < 0) return url;
-
-  const usuario = autenticacao.slice(0, separadorSenha);
-  const senhaOriginal = autenticacao.slice(separadorSenha + 1);
-  let senhaCodificada = senhaOriginal;
-
-  try {
-    senhaCodificada = encodeURIComponent(decodeURIComponent(senhaOriginal));
-  } catch {
-    senhaCodificada = encodeURIComponent(senhaOriginal);
+  if (!apiKey) {
+    throw new Error("Chave do Supabase não configurada. Defina SUPABASE_SERVICE_ROLE_KEY (backend) e SUPABASE_ANON_KEY (opcional) em .env.");
   }
 
-  return `${prefixo}${usuario}:${senhaCodificada}${url.slice(ultimoArroba)}`;
+  return {
+    "Content-Type": "application/json",
+    apikey: apiKey,
+    Authorization: `Bearer ${apiKey}`,
+    Prefer: "return=representation",
+  };
 }
 
-const databaseUrl = normalizarUrlPostgres(process.env.DATABASE_URL);
+async function diagnosticarSupabase() {
+  const diagnostico = {
+    supabaseUrl: SUPABASE_URL || null,
+    host: SUPABASE_URL ? new URL(SUPABASE_URL).hostname : null,
+    dns: null,
+    http: null,
+    serviceRoleConfigured: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+    anonConfigured: Boolean(SUPABASE_ANON_KEY),
+  };
 
-const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-  connectionTimeoutMillis: 10000,
-});
+  if (!SUPABASE_URL) {
+    diagnostico.dns = { status: "sem_url" };
+    diagnostico.http = { status: "sem_url" };
+    return diagnostico;
+  }
+
+  try {
+    const resultado = await dns.promises.lookup(diagnostico.host);
+    diagnostico.dns = {
+      status: "resolvido",
+      address: resultado.address,
+      family: resultado.family,
+    };
+  } catch (erro) {
+    diagnostico.dns = {
+      status: "nao_resolve",
+      code: erro.code || erro.name,
+      message: erro.message,
+    };
+    return diagnostico;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const resposta = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+      method: "GET",
+      headers: buildSupabaseHeaders({ useServiceRole: true }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    diagnostico.http = {
+      status: resposta.status,
+      ok: resposta.ok,
+      statusText: resposta.statusText,
+      url: `${SUPABASE_URL}/rest/v1/`,
+    };
+  } catch (erro) {
+    diagnostico.http = {
+      status: "falha_conexao",
+      message: erro.message,
+      code: erro.code || erro.name,
+    };
+  }
+
+  return diagnostico;
+}
+
+async function supabaseFetch(table, { method = "GET", query = "", body = null, useServiceRole = true } = {}) {
+  if (!SUPABASE_URL) {
+    throw new Error("SUPABASE_URL não configurada.");
+  }
+
+  const url = query ? `${SUPABASE_URL}/rest/v1/${table}?${query}` : `${SUPABASE_URL}/rest/v1/${table}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: buildSupabaseHeaders({ useServiceRole }),
+      body: body === null || body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const texto = await response.text();
+    let payload = null;
+
+    if (texto) {
+      try {
+        payload = JSON.parse(texto);
+      } catch {
+        payload = texto;
+      }
+    }
+
+    if (!response.ok) {
+      const mensagem = typeof payload === "object" && payload !== null
+        ? payload.message || payload.error || JSON.stringify(payload)
+        : payload || "Erro ao acessar o Supabase.";
+      throw new Error(`Supabase ${table}: ${mensagem}`);
+    }
+
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 app.use(cors());
 app.use(express.json());
-
-const JWT_SECRET = process.env.JWT_SECRET?.trim();
-const JWT_EXPIRACAO = process.env.JWT_EXPIRACAO || "7d";
 
 function validarUsuarioESenha(usuario, senha) {
   if (typeof usuario !== "string") return "Informe um nome de usuário válido.";
@@ -82,52 +172,71 @@ function autenticar(req, res, next) {
   }
 }
 
-app.get("/health", async (_req, res) => {
-  try {
-    const resultado = await pool.query("SELECT NOW() AS agora");
-    res.json({ banco: "conectado", agora: resultado.rows[0].agora });
-  } catch (err) {
-    console.error("[Banco] Falha na verificação de saúde:", err);
-    res.status(503).json({ banco: "indisponível", erro: err.message });
-  }
-});
+async function validarConfiguracaoSupabase() {
+  const diagnostico = await diagnosticarSupabase();
 
-async function iniciarBanco() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS ranking (
-      id SERIAL PRIMARY KEY,
-      usuario VARCHAR(50) NOT NULL,
-      pontuacao DOUBLE PRECISION NOT NULL CHECK (pontuacao >= 0),
-      nivel INTEGER NOT NULL CHECK (nivel >= 0),
-      data TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS ranking_usuario_unico
-    ON ranking (LOWER(usuario));
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS jogadores (
-      id SERIAL PRIMARY KEY,
-      usuario VARCHAR(20) NOT NULL,
-      senha_hash VARCHAR(100) NOT NULL,
-      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS jogadores_usuario_unico
-    ON jogadores (LOWER(usuario));
-  `);
-  await pool.query(`
-    ALTER TABLE ranking ADD COLUMN IF NOT EXISTS jogador_id INTEGER
-    REFERENCES jogadores(id) ON DELETE CASCADE;
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS ranking_jogador_unico
-    ON ranking (jogador_id)
-    WHERE jogador_id IS NOT NULL;
-  `);
+  if (!SUPABASE_URL) {
+    console.warn("[Banco] SUPABASE_URL não configurada. Verifique o arquivo backend/.env.");
+    return false;
+  }
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn("[Banco] SUPABASE_SERVICE_ROLE_KEY não configurada. Verifique o arquivo backend/.env.");
+    return false;
+  }
+
+  if (diagnostico.dns?.status !== "resolvido") {
+    console.error("[Banco] Falha de DNS/URL do Supabase:", {
+      host: diagnostico.host,
+      dns: diagnostico.dns,
+      http: diagnostico.http,
+    });
+    return false;
+  }
+
+  try {
+    await supabaseFetch("jogadores", { query: "select=id&limit=1" });
+    console.info("[Banco] Conexão HTTPS com o Supabase validada com sucesso.");
+    return true;
+  } catch (err) {
+    console.error("[Banco] Supabase respondeu ou falhou em autenticação/HTTP:", {
+      host: diagnostico.host,
+      dns: diagnostico.dns,
+      http: diagnostico.http,
+      erro: err.message || err,
+    });
+    return false;
+  }
 }
+
+app.get("/health", async (_req, res) => {
+  const diagnostico = await diagnosticarSupabase();
+
+  if (diagnostico.dns?.status === "resolvido" && diagnostico.http?.status === 401) {
+    return res.status(200).json({
+      banco: "resposta-http",
+      mensagem: "O host do Supabase responde, mas a autenticação falhou. Verifique a chave e a autorização.",
+      diagnostico: {
+        host: diagnostico.host,
+        dns: diagnostico.dns,
+        http: diagnostico.http,
+      },
+    });
+  }
+
+  if (diagnostico.dns?.status === "resolvido" && diagnostico.http && diagnostico.http.status !== "falha_conexao") {
+    return res.status(200).json({
+      banco: "respondeu",
+      mensagem: "O endereço do Supabase respondeu por HTTPS, mas o acesso ainda precisa ser validado.",
+      diagnostico,
+    });
+  }
+
+  res.status(503).json({
+    banco: "indisponível",
+    mensagem: "O Supabase não está acessível a partir deste servidor.",
+    diagnostico,
+  });
+});
 
 app.post("/api/conta", async (req, res) => {
   const usuario = typeof req.body?.usuario === "string" ? req.body.usuario.trim() : "";
@@ -136,29 +245,29 @@ app.post("/api/conta", async (req, res) => {
   if (erro) return res.status(400).json({ erro });
 
   try {
-    const existente = await pool.query(
-      "SELECT id FROM jogadores WHERE LOWER(usuario) = LOWER($1)",
-      [usuario],
-    );
-    if (existente.rowCount > 0) {
+    const existente = await supabaseFetch("jogadores", {
+      query: `select=id&usuario=ilike.${encodeURIComponent(usuario)}`,
+    });
+
+    if (Array.isArray(existente) && existente.length > 0) {
       return res.status(409).json({ erro: "Este nome de usuário já está em uso." });
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
-    const { rows } = await pool.query(
-      `INSERT INTO jogadores (usuario, senha_hash)
-       VALUES ($1, $2)
-       RETURNING id, usuario`,
-      [usuario, senhaHash],
-    );
-    const jogador = rows[0];
+    const rows = await supabaseFetch("jogadores", {
+      method: "POST",
+      body: { usuario, senha_hash: senhaHash },
+    });
+
+    const jogador = Array.isArray(rows) ? rows[0] : rows;
     res.status(201).json({
       id: jogador.id,
       usuario: jogador.usuario,
       token: criarToken(jogador.id, jogador.usuario),
     });
   } catch (err) {
-    if (err.code === "23505") {
+    const mensagem = err.message || "Erro ao criar a conta.";
+    if (mensagem.includes("duplicate") || mensagem.includes("already")) {
       return res.status(409).json({ erro: "Este nome de usuário já está em uso." });
     }
     console.error("[Conta] Erro ao criar conta:", err);
@@ -175,14 +284,11 @@ app.post("/api/login", async (req, res) => {
   }
 
   try {
-    const { rows } = await pool.query(
-      "SELECT id, usuario, senha_hash FROM jogadores WHERE LOWER(usuario) = LOWER($1)",
-      [usuario],
-    );
-    const jogador = rows[0];
-    const senhaCorreta = jogador
-      ? await bcrypt.compare(senha, jogador.senha_hash)
-      : false;
+    const rows = await supabaseFetch("jogadores", {
+      query: `select=id,usuario,senha_hash&usuario=ilike.${encodeURIComponent(usuario)}`,
+    });
+    const jogador = Array.isArray(rows) ? rows[0] : null;
+    const senhaCorreta = jogador ? await bcrypt.compare(senha, jogador.senha_hash) : false;
 
     if (!jogador || !senhaCorreta) {
       return res.status(401).json({ erro: "Nome de usuário ou senha incorretos." });
@@ -201,17 +307,117 @@ app.post("/api/login", async (req, res) => {
 
 app.get("/api/usuario", autenticar, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      "SELECT id, usuario FROM jogadores WHERE id = $1",
-      [req.usuario.id],
-    );
-    if (rows.length === 0) {
+    const rows = await supabaseFetch("jogadores", {
+      query: `select=id,usuario,partidas_totais&id=eq.${req.usuario.id}`,
+    });
+
+    if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(401).json({ erro: "Conta não encontrada. Entre novamente." });
     }
-    res.json({ id: rows[0].id, usuario: rows[0].usuario });
+
+    res.json({ id: rows[0].id, usuario: rows[0].usuario, partidasTotais: Number(rows[0].partidas_totais ?? 0) });
   } catch (err) {
     console.error("[Conta] Erro ao verificar sessão:", err);
     res.status(500).json({ erro: "Erro ao verificar a sessão." });
+  }
+});
+
+app.get("/api/conquistas", autenticar, async (req, res) => {
+  try {
+    const linhas = await supabaseFetch("conquistas_jogador", {
+      query: `select=id,jogador_id,codigo,nome,descricao,icone,desbloqueado_em&jogador_id=eq.${req.usuario.id}&order=desbloqueado_em.asc`,
+    });
+
+    const jogador = await supabaseFetch("jogadores", {
+      query: `select=id,partidas_totais&id=eq.${req.usuario.id}`,
+    });
+
+    const conquistas = Array.isArray(linhas)
+      ? linhas.map((item) => ({
+          id: item.codigo,
+          codigo: item.codigo,
+          name: item.nome,
+          description: item.descricao,
+          icon: item.icone,
+          unlockedAt: item.desbloqueado_em,
+        }))
+      : [];
+
+    res.json({
+      conquistas,
+      partidasTotais: Number(Array.isArray(jogador) && jogador[0] ? jogador[0].partidas_totais ?? 0 : 0),
+    });
+  } catch (err) {
+    console.error("[Conquistas] Erro ao buscar conquistas:", err);
+    res.status(500).json({ erro: "Erro ao buscar as conquistas." });
+  }
+});
+
+app.post("/api/conquistas", autenticar, async (req, res) => {
+  const lista = Array.isArray(req.body?.conquistas) ? req.body.conquistas : [];
+  const partidasTotais = Number(req.body?.partidasTotais ?? 0);
+
+  if (!Number.isInteger(partidasTotais) || partidasTotais < 0) {
+    return res.status(400).json({ erro: "O total de partidas deve ser um inteiro não negativo." });
+  }
+
+  try {
+    const existentes = await supabaseFetch("conquistas_jogador", {
+      query: `select=id,codigo&jogador_id=eq.${req.usuario.id}`,
+    });
+    const existentesSet = new Set(Array.isArray(existentes) ? existentes.map((item) => item.codigo) : []);
+
+    const aInserir = lista.filter((item) => {
+      const codigo = String(item?.id ?? item?.codigo ?? "").trim();
+      return codigo && !existentesSet.has(codigo);
+    }).map((item) => ({
+      jogador_id: req.usuario.id,
+      codigo: String(item?.id ?? item?.codigo ?? "").trim(),
+      nome: String(item?.name ?? item?.nome ?? "Conquista").trim() || "Conquista",
+      descricao: String(item?.description ?? item?.descricao ?? "Conquista desbloqueada.").trim() || "Conquista desbloqueada.",
+      icone: String(item?.icon ?? item?.icone ?? "🏆").trim() || "🏆",
+      desbloqueado_em: new Date().toISOString(),
+    }));
+
+    const inseridas = [];
+    for (const item of aInserir) {
+      const registro = await supabaseFetch("conquistas_jogador", {
+        method: "POST",
+        body: item,
+      });
+      inseridas.push(Array.isArray(registro) ? registro[0] : registro);
+    }
+
+    await supabaseFetch("jogadores", {
+      method: "PATCH",
+      query: `id=eq.${req.usuario.id}`,
+      body: {
+        partidas_totais: partidasTotais,
+      },
+    });
+
+    const todas = await supabaseFetch("conquistas_jogador", {
+      query: `select=id,jogador_id,codigo,nome,descricao,icone,desbloqueado_em&jogador_id=eq.${req.usuario.id}&order=desbloqueado_em.asc`,
+    });
+
+    res.status(201).json({
+      mensagem: "Conquistas registradas.",
+      novas: inseridas,
+      conquistas: Array.isArray(todas)
+        ? todas.map((item) => ({
+            id: item.codigo,
+            codigo: item.codigo,
+            name: item.nome,
+            description: item.descricao,
+            icon: item.icone,
+            unlockedAt: item.desbloqueado_em,
+          }))
+        : [],
+      partidasTotais,
+    });
+  } catch (err) {
+    console.error("[Conquistas] Erro ao registrar conquistas:", err);
+    res.status(500).json({ erro: "Erro ao registrar as conquistas." });
   }
 });
 
@@ -219,19 +425,20 @@ app.get("/ranking", async (req, res) => {
   try {
     const limite = parseInt(req.query.limite, 10);
     const usaLimite = Number.isInteger(limite) && limite > 0;
+    const rows = await supabaseFetch("ranking", {
+      query: "select=id,jogador_id,usuario,pontuacao,nivel,data&order=pontuacao.desc,nivel.desc,data.asc",
+    });
 
-    const { rows } = await pool.query(
-      `SELECT ROW_NUMBER() OVER (ORDER BY pontuacao DESC, nivel DESC, data ASC)::int AS posicao,
-      usuario, pontuacao, nivel
-      FROM ranking
-      ORDER BY posicao
-      ${usaLimite ? "LIMIT $1" : ""}`,
-      usaLimite ? [limite] : [],
-    );
+    const ranking = (Array.isArray(rows) ? rows : []).map((jogador, index) => ({
+      posicao: index + 1,
+      usuario: jogador.usuario,
+      pontuacao: Number(jogador.pontuacao),
+      nivel: Number(jogador.nivel ?? 0),
+    }));
 
-    res.json(rows);
+    res.json(usaLimite ? ranking.slice(0, limite) : ranking);
   } catch (err) {
-    console.error(err);
+    console.error("[Ranking] Erro ao buscar o ranking:", err);
     res.status(500).json({ erro: "Erro ao buscar o ranking." });
   }
 });
@@ -251,112 +458,106 @@ app.post("/ranking", autenticar, async (req, res) => {
     return res.status(403).json({ erro: "O jogador enviado não corresponde à sessão autenticada." });
   }
   if (!Number.isInteger(pontuacao) || pontuacao < 0 || pontuacao > 2147483647) {
-    return res.status(400).json({
-      erro: "A pontuação deve ser um inteiro não negativo.",
-    });
+    return res.status(400).json({ erro: "A pontuação deve ser um inteiro não negativo." });
   }
   if (!Number.isInteger(nivelValido) || nivelValido < 0) {
-    return res.status(400).json({
-      erro: "O campo 'nivel' deve ser um inteiro maior ou igual a 0.",
-    });
+    return res.status(400).json({ erro: "O campo 'nivel' deve ser um inteiro maior ou igual a 0." });
   }
 
   try {
-    const { rows: jogadores } = await pool.query(
-      "SELECT id, usuario FROM jogadores WHERE id = $1",
-      [req.usuario.id],
-    );
-    if (jogadores.length === 0) {
+    const jogadores = await supabaseFetch("jogadores", {
+      query: `select=id,usuario&id=eq.${req.usuario.id}`,
+    });
+    const jogador = Array.isArray(jogadores) && jogadores.length > 0 ? jogadores[0] : null;
+
+    if (!jogador) {
       return res.status(401).json({ erro: "Conta não encontrada. Entre novamente." });
     }
-    const jogador = jogadores[0];
 
-    const atual = await pool.query(
-      "SELECT pontuacao FROM ranking WHERE jogador_id = $1",
-      [jogador.id],
-    );
+    const atual = await supabaseFetch("ranking", {
+      query: `select=id,jogador_id,usuario,pontuacao,nivel,data&jogador_id=eq.${jogador.id}`,
+    });
+
     let registro;
-    if (atual.rowCount === 0) {
-      const legado = await pool.query(
-        "SELECT id FROM ranking WHERE jogador_id IS NULL AND LOWER(usuario) = LOWER($1)",
-        [jogador.usuario],
-      );
-      if (legado.rowCount > 0) {
-        await pool.query(
-          "UPDATE ranking SET jogador_id = $1 WHERE id = $2",
-          [jogador.id, legado.rows[0].id],
-        );
-        const atualLegado = await pool.query(
-          "SELECT pontuacao FROM ranking WHERE jogador_id = $1",
-          [jogador.id],
-        );
-        if (pontuacao > atualLegado.rows[0].pontuacao) {
-          const atualizado = await pool.query(
-            `UPDATE ranking SET pontuacao = $2, nivel = $3, usuario = $4
-             WHERE jogador_id = $1 RETURNING pontuacao, usuario`,
-            [jogador.id, pontuacao, nivelValido, jogador.usuario],
-          );
-          registro = atualizado.rows[0];
+    if (!Array.isArray(atual) || atual.length === 0) {
+      const legado = await supabaseFetch("ranking", {
+        query: `select=id,usuario,pontuacao&usuario=ilike.${encodeURIComponent(jogador.usuario)}`,
+      });
+
+      if (Array.isArray(legado) && legado.length > 0) {
+        const registroLegado = legado[0];
+        const atualLegado = await supabaseFetch("ranking", {
+          query: `select=id,pontuacao,usuario,data&jogador_id=eq.${jogador.id}`,
+        });
+
+        if (pontuacao > Number((Array.isArray(atualLegado) && atualLegado[0]) ? atualLegado[0].pontuacao : 0)) {
+          const atualizado = await supabaseFetch("ranking", {
+            method: "PATCH",
+            query: `id=eq.${registroLegado.id}`,
+            body: {
+              jogador_id: jogador.id,
+              usuario: jogador.usuario,
+              pontuacao,
+              nivel: nivelValido,
+              data: new Date().toISOString(),
+            },
+          });
+          registro = Array.isArray(atualizado) ? atualizado[0] : atualizado;
         } else {
-          registro = atualLegado.rows.length
-            ? { pontuacao: atualLegado.rows[0].pontuacao, usuario: jogador.usuario }
-            : null;
+          registro = Array.isArray(atualLegado) && atualLegado.length > 0 ? atualLegado[0] : registroLegado;
         }
       } else {
-      const inserido = await pool.query(
-        `INSERT INTO ranking (jogador_id, usuario, pontuacao, nivel, data)
-         VALUES ($1, $2, $3, $4, NOW())
-         RETURNING pontuacao, usuario`,
-        [jogador.id, jogador.usuario, pontuacao, nivelValido],
-      );
-      registro = inserido.rows[0];
+        const inserido = await supabaseFetch("ranking", {
+          method: "POST",
+          body: {
+            jogador_id: jogador.id,
+            usuario: jogador.usuario,
+            pontuacao,
+            nivel: nivelValido,
+            data: new Date().toISOString(),
+          },
+        });
+        registro = Array.isArray(inserido) ? inserido[0] : inserido;
       }
-    } else if (pontuacao > atual.rows[0].pontuacao) {
-      const atualizado = await pool.query(
-        `UPDATE ranking
-         SET pontuacao = $2, nivel = $3, usuario = $4
-         WHERE jogador_id = $1
-         RETURNING pontuacao, usuario`,
-        [jogador.id, pontuacao, nivelValido, jogador.usuario],
-      );
-      registro = atualizado.rows[0];
+    } else if (pontuacao > Number(atual[0].pontuacao)) {
+      const atualizado = await supabaseFetch("ranking", {
+        method: "PATCH",
+        query: `jogador_id=eq.${jogador.id}`,
+        body: {
+          usuario: jogador.usuario,
+          pontuacao,
+          nivel: nivelValido,
+          data: new Date().toISOString(),
+        },
+      });
+      registro = Array.isArray(atualizado) ? atualizado[0] : atualizado;
     } else {
-      const mantido = await pool.query(
-        "SELECT pontuacao, usuario FROM ranking WHERE jogador_id = $1",
-        [jogador.id],
-      );
-      registro = mantido.rows[0];
+      registro = atual[0];
     }
-    const { rows: registroAtual } = await pool.query(
-      "SELECT data FROM ranking WHERE jogador_id = $1",
-      [jogador.id],
-    );
-    const { rows } = await pool.query(
-      `SELECT COUNT(*)::int + 1 AS posicao
-       FROM ranking
-       WHERE pontuacao > $1
-          OR (pontuacao = $1 AND data < $2)`,
-      [registro.pontuacao, registroAtual[0].data],
-    );
 
-    const { rows: confirmado } = await pool.query(
-      `SELECT jogador_id, usuario, pontuacao, nivel, data
-       FROM ranking WHERE jogador_id = $1`,
-      [jogador.id],
-    );
-    console.info("[Supabase] Resultado confirmado:", confirmado[0] ?? null);
+    const todos = await supabaseFetch("ranking", {
+      query: "select=id,jogador_id,usuario,pontuacao,nivel,data&order=pontuacao.desc,nivel.desc,data.asc",
+    });
+
+    const ranking = Array.isArray(todos) ? todos : [];
+    const posicao = ranking.findIndex((item) => item.jogador_id === jogador.id) + 1;
+
     console.info("[Ranking] Operação concluída:", {
       jogadorId: jogador.id,
       jogadorNome: jogador.usuario,
       pontuacaoRecebida: pontuacao,
-      melhorPontuacao: registro.pontuacao,
-      posicao: rows[0].posicao,
+      melhorPontuacao: registro?.pontuacao,
+      posicao,
     });
 
     res.status(201).json({
       mensagem: "Pontuação registrada.",
-      posicao: rows[0].posicao,
-      registro,
+      posicao,
+      registro: {
+        usuario: registro?.usuario ?? jogador.usuario,
+        pontuacao: Number(registro?.pontuacao ?? 0),
+        nivel: Number(registro?.nivel ?? nivelValido),
+      },
     });
   } catch (err) {
     console.error("Erro ao salvar pontuação no ranking:", err);
@@ -364,23 +565,15 @@ app.post("/ranking", autenticar, async (req, res) => {
   }
 });
 
-if (!databaseUrl) {
-  console.error("[Banco] DATABASE_URL não está configurada. Defina a variável antes de iniciar o servidor.");
-  process.exit(1);
-}
 if (!JWT_SECRET) {
   console.error("[Auth] JWT_SECRET não está configurada. Defina a variável antes de iniciar o servidor.");
   process.exit(1);
 }
 
-iniciarBanco()
-  .then(() => {
-    console.info("[Banco] Tabela ranking inicializada.");
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("Falha ao conectar/iniciar o banco:", err);
-    process.exit(1);
-  });
+app.listen(PORT, () => {
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
+});
+
+validarConfiguracaoSupabase().catch((err) => {
+  console.warn("[Banco] Verificação inicial do Supabase falhou sem bloquear a inicialização:", err.message || err);
+});
