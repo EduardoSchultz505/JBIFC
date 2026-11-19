@@ -1,17 +1,19 @@
-  import { Routes, Route } from "react-router";
-  import Navbar from "./components/Navbar";
-  import Footer from "./components/Footer";
-  import Landing from "./pages/Landing";
-  import Jogar from "./pages/Jogar";
-  import Ranking from "./pages/Ranking";
-  import Equipe from "./pages/Equipe";
-  import Tutorial from "./pages/Tutorial";
-  import Login from "./pages/Login";
-  import Perfil from "./pages/Perfil";
+import { Routes, Route } from "react-router";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import Landing from "./pages/Landing";
+import Jogar from "./pages/Jogar";
+import Ranking from "./pages/Ranking";
+import Equipe from "./pages/Equipe";
+import Tutorial from "./pages/Tutorial";
+import Login from "./pages/Login";
+import Perfil from "./pages/Perfil";
+import ScrollToTop from "./components/ScrollToTop";
 
   export default function App() {
     return (
       <>
+        <ScrollToTop />
         <Navbar />
         <Routes>
           <Route path="/" element={<Landing />} />
