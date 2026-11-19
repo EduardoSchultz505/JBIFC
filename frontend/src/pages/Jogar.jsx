@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize, CirclePlay } from "lucide-react";
 import axios from "axios";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { criarJogo } from "../game/loadGame";
-import { isDemoModeAtivo, setDemoModeAtivo } from "../config/demoMode";
 import {
   evaluateAchievementUnlocks,
   readAchievementList,
@@ -25,16 +24,8 @@ export default function Jogar() {
   const [mensagem, setMensagem] = useState("");
   const [token, setToken] = useState(() => localStorage.getItem("jbifc_token"));
   const [usuario, setUsuario] = useState("");
-  const [jogadorId, setJogadorId] = useState(null);
-  const [nome, setNome] = useState("");
-  const [senha, setSenha] = useState("");
-  const [modoAuth, setModoAuth] = useState("login");
   const [authCarregando, setAuthCarregando] = useState(() => Boolean(localStorage.getItem("jbifc_token")) && Boolean(API_URL_LOCAL));
-  const [authErro, setAuthErro] = useState(() => {
-    const tokenInicial = localStorage.getItem("jbifc_token");
-    return tokenInicial && !API_URL_LOCAL ? "VITE_API_URL não está configurada." : "";
-  });
-  const [demoAtivo, setDemoAtivo] = useState(() => isDemoModeAtivo());
+  const [authErro, setAuthErro] = useState("");
   const [conquistasNovas, setConquistasNovas] = useState([]);
   const navigate = useNavigate();
 
@@ -45,11 +36,12 @@ export default function Jogar() {
   const jogadorIdRef = useRef(null);
   const usuarioRef = useRef("");
   const tokenRef = useRef(token);
+  // Resumo da última partida, enviado junto com a pontuação
+  const resumoRef = useRef(null);
 
-  useEffect(() => {
-    setDemoModeAtivo(demoAtivo);
-  }, [demoAtivo]);
+  const logado = Boolean(token && usuario);
 
+  // Valida o token salvo e descobre quem é o jogador
   useEffect(() => {
     if (!token) return;
     if (!API_URL_LOCAL) return;
@@ -59,79 +51,55 @@ export default function Jogar() {
       timeout: 70000,
     }).then(({ data }) => {
       setUsuario(data.usuario);
-      setJogadorId(data.id);
       usuarioRef.current = data.usuario;
       jogadorIdRef.current = data.id;
       tokenRef.current = token;
-    }).catch(() => {
+    }).catch((erro) => {
+      // Só descarta o token se o servidor disse que ele é inválido
+      if (erro.response?.status !== 401) {
+        setAuthErro("Não foi possível verificar seu login agora. Recarregue a página para tentar de novo.");
+        return;
+      }
       localStorage.removeItem("jbifc_token");
       setToken(null);
       setUsuario("");
-      setJogadorId(null);
       usuarioRef.current = "";
       jogadorIdRef.current = null;
       tokenRef.current = null;
     }).finally(() => setAuthCarregando(false));
   }, [token]);
 
-  const getContextoPersistencia = useCallback(() => {
-    const jogadorIdAtual = jogadorId || jogadorIdRef.current;
-
-    if (demoAtivo || !tokenRef.current || !jogadorIdAtual) {
-      return { userId: null, demoMode: true };
-    }
-
-    return { userId: jogadorIdAtual, demoMode: false };
-  }, [demoAtivo, jogadorId]);
-
-  const processarConquistasPartida = useCallback(async (resumoFinal) => {
-    const contexto = getContextoPersistencia();
+  // Só para quem joga sem conta: conquista decorativa, fica no localStorage
+  const processarConquistasDemo = useCallback((resumoFinal) => {
+    const contexto = { userId: null, demoMode: true };
     const existentes = readAchievementList(contexto);
-    const partidasTotaisAntes = readPartidasTotais(contexto);
-    const partidasTotaisDepois = partidasTotaisAntes + 1;
-    const novas = evaluateAchievementUnlocks({
-      ...resumoFinal,
-      partidasTotaisApos: partidasTotaisDepois,
-    }, existentes);
+    const partidasDepois = readPartidasTotais(contexto) + 1;
+    const novas = evaluateAchievementUnlocks(
+      { ...resumoFinal, partidasTotaisApos: partidasDepois },
+      existentes,
+    );
 
-    const todas = [...existentes, ...novas];
-    writeAchievementList(todas, contexto);
-    writePartidasTotais(partidasTotaisDepois, contexto);
+    writeAchievementList([...existentes, ...novas], contexto);
+    writePartidasTotais(partidasDepois, contexto);
     setConquistasNovas(novas);
+  }, []);
 
-    if (!contexto.demoMode && tokenRef.current && jogadorIdRef.current && novas.length > 0) {
-      try {
-        await axios.post(
-          `${API_URL_LOCAL}/api/conquistas`,
-          {
-            conquistas: novas,
-            partidasTotais: partidasTotaisDepois,
-          },
-          {
-            headers: { Authorization: `Bearer ${tokenRef.current}` },
-            timeout: 70000,
-          },
-        );
-      } catch (erro) {
-        console.warn("[Conquistas] Falha ao sincronizar no Supabase, mantendo em localStorage:", erro);
-      }
-    }
-
-    return novas;
-  }, [getContextoPersistencia]);
-
-  const salvarPontuacao = useCallback(async (pontuacaoCapturada = gameOver) => {
-    if (demoAtivo) {
-      setEstadoSalvamento("idle");
-      setMensagem("Ranking indisponível no modo de demonstração.");
-      return;
-    }
-
+  // Ranking e conquistas numa requisição só; o servidor valida e decide
+  const salvarPontuacao = useCallback(async (pontuacaoCapturada) => {
     if (salvamentoEmAndamentoRef.current || pontuacaoSalvaRef.current) return;
+
+    // Sem login não há o que salvar; o aviso da tela já explica isso
+    if (!tokenRef.current || !jogadorIdRef.current || !usuarioRef.current) return;
+
     const pontuacaoFinal = Number(pontuacaoCapturada);
     if (!Number.isInteger(pontuacaoFinal) || pontuacaoFinal < 0) {
       setEstadoSalvamento("erro");
       setMensagem("A pontuação final não é válida.");
+      return;
+    }
+    if (!resumoRef.current) {
+      setEstadoSalvamento("erro");
+      setMensagem("Os dados da partida não foram encontrados.");
       return;
     }
     if (!API_URL_LOCAL) {
@@ -140,24 +108,18 @@ export default function Jogar() {
       console.error("[Ranking] VITE_API_URL não está configurada.");
       return;
     }
-    if (!tokenRef.current || !jogadorIdRef.current || !usuarioRef.current) {
-      setEstadoSalvamento("erro");
-      setMensagem("Faça login novamente para salvar a pontuação.");
-      return;
-    }
 
     salvamentoEmAndamentoRef.current = true;
     setEstadoSalvamento("salvando");
     setMensagem("");
 
+    // O id do jogador vai pelo token, não pelo corpo
     const dados = {
-      jogadorId: jogadorIdRef.current,
       pontuacao: pontuacaoFinal,
-      nivel: 0,
+      resumo: resumoRef.current,
     };
     console.info("[Ranking] Dados enviados ao backend:", {
       nome: usuarioRef.current,
-      jogadorId: jogadorIdRef.current,
       dados,
     });
 
@@ -169,11 +131,16 @@ export default function Jogar() {
       console.info("[Ranking] Resposta do backend:", resposta.status, resposta.data);
       pontuacaoSalvaRef.current = true;
       setEstadoSalvamento("salvo");
-      setMensagem(
-        resposta.data.posicao
-          ? `Pontuação salva! Sua posição: ${resposta.data.posicao}º`
-          : "Pontuação salva com sucesso!",
-      );
+      setConquistasNovas(resposta.data.conquistasNovas ?? []);
+
+      const melhor = Number(resposta.data.registro?.pontuacao ?? pontuacaoFinal);
+      const posicao = resposta.data.posicao;
+      if (melhor > pontuacaoFinal) {
+        // O ranking só guarda a melhor pontuação de cada jogador
+        setMensagem(`Sua melhor pontuação continua sendo ${melhor}${posicao ? ` (${posicao}º lugar)` : ""}.`);
+      } else {
+        setMensagem(posicao ? `Pontuação salva! Sua posição: ${posicao}º` : "Pontuação salva com sucesso!");
+      }
     } catch (erro) {
       console.error("[Ranking] Erro ao salvar a pontuação:", {
         status: erro.response?.status,
@@ -185,7 +152,7 @@ export default function Jogar() {
     } finally {
       salvamentoEmAndamentoRef.current = false;
     }
-  }, [demoAtivo, gameOver]);
+  }, []);
 
   useEffect(() => {
     if (!iniciado || !containerRef.current) return;
@@ -205,7 +172,7 @@ export default function Jogar() {
         jogo = criarJogo(containerRef.current);
         jogoRef.current = jogo;
 
-        const aoTerminarPartida = async (resumoFinal) => {
+        const aoTerminarPartida = (resumoFinal) => {
           if (cancelado) return;
 
           const pontuacaoExata = Number(resumoFinal?.score ?? resumoFinal ?? 0);
@@ -230,12 +197,17 @@ export default function Jogar() {
           });
           salvamentoEmAndamentoRef.current = false;
           pontuacaoSalvaRef.current = false;
+          resumoRef.current = resumoNormalizado;
           setEstadoSalvamento("idle");
           setMensagem("");
+          setConquistasNovas([]);
           setGameOver(pontuacaoExata);
 
-          await processarConquistasPartida(resumoNormalizado);
-          salvarPontuacao(pontuacaoExata);
+          if (tokenRef.current && jogadorIdRef.current) {
+            salvarPontuacao(pontuacaoExata); // ranking e conquistas numa requisição só
+          } else {
+            processarConquistasDemo(resumoNormalizado);
+          }
         };
 
         jogo.events.on("fim-de-partida", aoTerminarPartida);
@@ -282,7 +254,7 @@ export default function Jogar() {
         jogoRef.current = null;
       }
     };
-  }, [iniciado, processarConquistasPartida, salvarPontuacao]);
+  }, [iniciado, processarConquistasDemo, salvarPontuacao]);
 
   async function alternarTelaCheia() {
     const jogo = jogoRef.current;
@@ -300,49 +272,6 @@ export default function Jogar() {
     }
   }
 
-
-  async function enviarAutenticacao(evento) {
-    evento.preventDefault();
-    setAuthErro("");
-
-    const nomeLimpo = nome.trim();
-    if (nomeLimpo.length < 1 || nomeLimpo.length > 20) {
-      setAuthErro("O nome de usuário deve ter entre 1 e 20 caracteres.");
-      return;
-    }
-    if (senha.length < 8 || senha.length > 72) {
-      setAuthErro("A senha deve ter entre 8 e 72 caracteres.");
-      return;
-    }
-    if (!API_URL_LOCAL) {
-      setAuthErro("VITE_API_URL não está configurada.");
-      return;
-    }
-
-    setAuthCarregando(true);
-    try {
-      const rota = modoAuth === "cadastro" ? "/api/conta" : "/api/login";
-      const resposta = await axios.post(`${API_URL_LOCAL}${rota}`, {
-        usuario: nomeLimpo,
-        senha,
-      }, { timeout: 70000 });
-
-      localStorage.setItem("jbifc_token", resposta.data.token);
-      setToken(resposta.data.token);
-      setUsuario(resposta.data.usuario);
-      setJogadorId(resposta.data.id);
-      jogadorIdRef.current = resposta.data.id;
-      usuarioRef.current = resposta.data.usuario;
-      tokenRef.current = resposta.data.token;
-      setNome("");
-      setSenha("");
-    } catch (erro) {
-      setAuthErro(erro.response?.data?.erro || "Não foi possível entrar. Tente novamente.");
-    } finally {
-      setAuthCarregando(false);
-    }
-  }
-
   function voltarAoMenu() {
     setGameOver(null);
     setConquistasNovas([]);
@@ -352,6 +281,7 @@ export default function Jogar() {
   return (
     <main className="flex-1 pt-12 pb-18 md:pt-16 md:pb-22">
       <div className="mx-auto w-[calc(100%-32px)] max-w-275 md:w-[calc(100%-48px)]">
+
         <section className="overflow-hidden rounded-xl border border-game-line bg-game text-white shadow-game">
           <header className="flex items-center justify-between border-b border-white/10 bg-game px-4 py-3">
             <span className="text-sm font-semibold">
@@ -374,95 +304,31 @@ export default function Jogar() {
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-game">
                 <span aria-hidden="true" className="absolute top-3 left-3 size-5.5 border-t border-l border-white/10 md:top-5.5 md:left-5.5 md:size-9.5" />
                 <span aria-hidden="true" className="absolute right-3 bottom-3 size-5.5 border-r border-b border-white/10 md:right-5.5 md:bottom-5.5 md:size-9.5" />
-                {demoAtivo ? (
-                  <div className="flex flex-col items-center">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#FFC93C]">
-                      Modo de demonstração
-                    </p>
-                    <p className="mb-4 text-sm text-white/70">Ranking indisponível neste modo.</p>
-                    <button
-                      onClick={() => setIniciado(true)}
-                      className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621]"
-                    >
-                      <CirclePlay size={24} strokeWidth={2} />
-                      Jogar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDemoAtivo(false)}
-                      className="mt-4 text-xs font-semibold text-[#67F5A5] underline"
-                    >
-                      Desativar modo de demonstração
-                    </button>
-                  </div>
-                ) : token && usuario ? (
-                  <div className="flex flex-col items-center">
-                    <p className="mb-4 text-sm font-semibold text-white/80">Jogando como {usuario}</p>
-                    <button
-                      onClick={() => setIniciado(true)}
-                      className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621]"
-                    >
-                      <CirclePlay size={24} strokeWidth={2} />
-                      Jogar
-                    </button>
-                  </div>
+                {authCarregando ? (
+                  <p className="text-sm text-white/70">Verificando login...</p>
                 ) : (
-                  <form onSubmit={enviarAutenticacao} className="w-[calc(100%-32px)] max-w-sm rounded-xl border border-white/15 bg-[#252525] p-5 text-center shadow-game">
-                    <h2 className="text-lg font-bold">
-                      {modoAuth === "cadastro" ? "Criar conta" : "Entrar"}
-                    </h2>
-                    <label className="mt-4 block text-left text-sm font-semibold" htmlFor="usuario">
-                      Nome de usuário
-                    </label>
-                    <input
-                      id="usuario"
-                      className="mt-2 min-h-11 w-full rounded-lg border border-white/20 bg-[#151515] px-3 text-white outline-none focus:border-[#67F5A5]"
-                      maxLength={20}
-                      value={nome}
-                      onChange={(evento) => setNome(evento.target.value)}
-                      autoComplete="username"
-                      placeholder="Seu nome de usuário"
-                    />
-                    <label className="mt-4 block text-left text-sm font-semibold" htmlFor="senha">
-                      Senha
-                    </label>
-                    <input
-                      id="senha"
-                      type="password"
-                      className="mt-2 min-h-11 w-full rounded-lg border border-white/20 bg-[#151515] px-3 text-white outline-none focus:border-[#67F5A5]"
-                      minLength={8}
-                      maxLength={72}
-                      value={senha}
-                      onChange={(evento) => setSenha(evento.target.value)}
-                      autoComplete={modoAuth === "cadastro" ? "new-password" : "current-password"}
-                      placeholder="Entre 8 e 72 caracteres"
-                    />
-                    {authErro && <p className="mt-3 text-sm text-[#ff8585]" role="alert">{authErro}</p>}
+                  <div className="flex flex-col items-center">
+                    <p className="mb-4 text-sm font-semibold text-white/80">
+                      {logado ? `Jogando como ${usuario}` : "Jogando sem conta"}
+                    </p>
+                    {authErro && (
+                      <p className="mb-4 max-w-xs text-center text-xs text-[#CD191E]" role="alert">
+                        {authErro}
+                      </p>
+                    )}
                     <button
-                      type="submit"
-                      disabled={authCarregando}
-                      className="mt-5 min-h-11 w-full rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => setIniciado(true)}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621]"
                     >
-                      {authCarregando ? "Aguarde..." : modoAuth === "cadastro" ? "Criar conta" : "Entrar"}
+                      <CirclePlay size={24} strokeWidth={2} />
+                      Jogar
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setModoAuth((modo) => modo === "login" ? "cadastro" : "login");
-                        setAuthErro("");
-                      }}
-                      className="mt-3 min-h-10 text-sm font-semibold text-[#FFC93C] underline"
-                    >
-                      {modoAuth === "login" ? "Ainda não tenho conta: criar conta" : "Já tenho conta: entrar"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDemoAtivo(true)}
-                      className="mt-3 min-h-10 text-sm font-semibold text-[#67F5A5] underline"
-                    >
-                      Entrar em modo de demonstração
-                    </button>
-                  </form>
+                    {!logado && (
+                      <Link to="/login" className="mt-4 text-sm font-semibold text-[#67F5A5] underline">
+                        Entrar ou criar conta
+                      </Link>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -483,10 +349,10 @@ export default function Jogar() {
                       <strong className="text-[#FFC93C]">{gameOver}</strong>
                     </p>
 
-                    {mensagem && (
+                    {logado && mensagem && (
                       <p
                         className={`mt-3 text-sm ${
-                          estadoSalvamento === "salvo" ? "text-[#67F5A5]" : demoAtivo ? "text-[#FFC93C]" : "text-[#CD191E]"
+                          estadoSalvamento === "salvo" ? "text-[#67F5A5]" : "text-[#CD191E]"
                         }`}
                         role="alert"
                       >
@@ -515,23 +381,12 @@ export default function Jogar() {
                       </div>
                     )}
 
-                    {demoAtivo ? (
-                      <>
-                        <p className="mt-3 text-xs text-white/60">Ranking indisponível no modo de demonstração.</p>
-                        <button
-                          type="button"
-                          className="mt-5 min-h-11 w-full rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
-                          onClick={voltarAoMenu}
-                        >
-                          Voltar ao menu
-                        </button>
-                      </>
-                    ) : (
+                    {logado ? (
                       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                         <button
                           type="button"
                           className="min-h-11 flex-1 rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={salvarPontuacao}
+                          onClick={() => salvarPontuacao(gameOver)}
                           disabled={estadoSalvamento === "salvando" || estadoSalvamento === "salvo"}
                         >
                           {estadoSalvamento === "salvando" ? "Salvando..." : estadoSalvamento === "salvo" ? "Pontuação salva" : estadoSalvamento === "erro" ? "Tentar novamente" : "Salvar pontuação"}
@@ -544,9 +399,22 @@ export default function Jogar() {
                           Voltar ao menu
                         </button>
                       </div>
+                    ) : (
+                      <>
+                        <p className="mt-3 text-xs text-white/60">
+                          Você jogou sem conta, então esta pontuação não entrou no ranking.
+                        </p>
+                        <button
+                          type="button"
+                          className="mt-5 min-h-11 w-full rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
+                          onClick={voltarAoMenu}
+                        >
+                          Voltar ao menu
+                        </button>
+                      </>
                     )}
 
-                    {estadoSalvamento === "salvo" && !demoAtivo && (
+                    {logado && estadoSalvamento === "salvo" && (
                       <button
                         type="button"
                         className="mt-3 min-h-11 w-full rounded-lg border border-[#FFC93C] px-4 font-semibold text-[#FFC93C] hover:bg-white/10"

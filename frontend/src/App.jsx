@@ -6,6 +6,8 @@
   import Ranking from "./pages/Ranking";
   import Equipe from "./pages/Equipe";
   import Tutorial from "./pages/Tutorial";
+  import Login from "./pages/Login";
+  import Perfil from "./pages/Perfil";
 
   export default function App() {
     return (
@@ -17,6 +19,8 @@
           <Route path="/ranking" element={<Ranking />} />
           <Route path="/equipe" element={<Equipe />} />
           <Route path="/como-jogar" element={<Tutorial />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/perfil/:nome" element={<Perfil />} />
         </Routes>
         <Footer />
       </>
