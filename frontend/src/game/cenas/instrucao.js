@@ -1,7 +1,10 @@
+
 import Phaser from "phaser";
+import { criarTexto } from "../sistema/qualidadeGraficos";
 
 // Exportadas para a Partida reaproveitar no HUD e no feedback
 export const FONTE = "PressStart2P";
+
 export const COR = {
   amarelo: "#FFC93C",
   verde: "#67F5A5",
@@ -10,14 +13,18 @@ export const COR = {
 };
 
 // Tempos em ms: painel entra, fica parado para leitura, painel sai
-const TEMPOS = { entrada: 350, leitura: 1800, saida: 350 };
+const TEMPOS = {
+  entrada: 350,
+  leitura: 1800,
+  saida: 350,
+};
+
 const COR_PAINEL = 0x141b1f;
 const OPACIDADE_PAINEL = 0.85;
 const CHAVE = "Instrucao";
 
 // A animação roda em uma cena própria, por cima da Partida.
-// Enquanto ela toca, a Partida fica pausada: timers, tweens,
-// listeners de update e input do minigame ficam congelados.
+// Enquanto ela toca, a Partida fica pausada.
 class CenaInstrucao extends Phaser.Scene {
   constructor() {
     super(CHAVE);
@@ -47,11 +54,34 @@ class CenaInstrucao extends Phaser.Scene {
       .setScale(0, 1);
 
     this.textos = [
-      this.add.text(width / 2, height * 0.32, minigame.titulo ?? minigame.instrucao ?? "", estilo(60, COR.branco)),
-      this.add.text(width / 2, height * 0.5, minigame.descricao ?? "", estilo(28, COR.branco)),
-      this.add.text(width / 2, height * 0.68, (minigame.controles ?? []).join("   "), estilo(32, COR.amarelo)),
+      criarTexto(
+        this,
+        width / 2,
+        height * 0.32,
+        minigame.titulo ?? minigame.instrucao ?? "",
+        estilo(60, COR.branco)
+      ),
+
+      criarTexto(
+        this,
+        width / 2,
+        height * 0.5,
+        minigame.descricao ?? "",
+        estilo(28, COR.branco)
+      ),
+
+      criarTexto(
+        this,
+        width / 2,
+        height * 0.68,
+        (minigame.controles ?? []).join("   "),
+        estilo(32, COR.amarelo)
+      ),
     ];
-    this.textos.forEach((t) => t.setOrigin(0.5).setAlpha(0).setResolution(2));
+
+    this.textos.forEach((texto) => {
+      texto.setOrigin(0.5).setAlpha(0);
+    });
 
     // Se a Partida for encerrada no meio, esta cena também para
     cenaPai.events.once("shutdown", this.cancelar, this);
@@ -62,15 +92,26 @@ class CenaInstrucao extends Phaser.Scene {
       scaleX: 1,
       duration: TEMPOS.entrada,
       ease: "Cubic.easeOut",
+
       onComplete: () => {
-        this.tweens.add({ targets: this.textos, alpha: 1, duration: 200 });
+        this.tweens.add({
+          targets: this.textos,
+          alpha: 1,
+          duration: 200,
+        });
+
         this.time.delayedCall(TEMPOS.leitura, () => this.sair());
       },
     });
   }
 
   sair() {
-    this.tweens.add({ targets: this.textos, alpha: 0, duration: 150 });
+    this.tweens.add({
+      targets: this.textos,
+      alpha: 0,
+      duration: 150,
+    });
+
     // Volta para a esquerda
     this.tweens.add({
       targets: this.painel,
@@ -87,18 +128,30 @@ class CenaInstrucao extends Phaser.Scene {
 
   finalizar() {
     const { cenaPai, aoFinalizar } = this.dados;
+
     cenaPai.events.off("shutdown", this.cancelar, this);
+
     this.scene.stop();
-    cenaPai.scene.resume(); // descongela o minigame
+
+    // Descongela o minigame
+    cenaPai.scene.resume();
+
     aoFinalizar();
   }
 }
 
 export function mostrarInstrucao(cena, minigame, aoFinalizar) {
   // Registra a cena uma única vez, sem precisar mexer no config do Phaser
-  if (!cena.scene.get(CHAVE)) cena.scene.add(CHAVE, CenaInstrucao, false);
+  if (!cena.scene.get(CHAVE)) {
+    cena.scene.add(CHAVE, CenaInstrucao, false);
+  }
 
   cena.scene.pause();
-  cena.scene.launch(CHAVE, { minigame, aoFinalizar, cenaPai: cena });
+  cena.scene.launch(CHAVE, {
+    minigame,
+    aoFinalizar,
+    cenaPai: cena,
+  });
+
   cena.scene.bringToTop(CHAVE);
 }

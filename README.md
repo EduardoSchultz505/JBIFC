@@ -516,10 +516,11 @@ O frontend e o backend utilizam o mesmo domínio público, com as requisições 
 | Integrante | Participação no desenvolvimento |
 |---|---|
 | Eduardo Schultz | Desenvolvimento do frontend e dos minijogos. |
-| Vinicius Pecini | Desenvolvimento do backend e da API. |
 | Endrio Ruan | Design dos minijogos. |
 | Guilherme Otávio | Design dos minijogos. |
 | Gustavo Kell | Design dos minijogos. |
+| João Araldi | Organização de equipe e Testes. |
+| Vinicius Pecini | Desenvolvimento do backend e da API. |
 
 ---
 

@@ -1,6 +1,9 @@
 
 import Phaser from "phaser";
-
+import {
+  aplicarQualidade,
+  criarTexto,
+} from "../sistema/qualidadeGraficos";
 
 const MINIGAMES = Object.values(
   import.meta.glob(["../minigames/*.js", "!../minigames/_*.js"], {
@@ -11,6 +14,7 @@ const MINIGAMES = Object.values(
   .filter(Boolean);
 
 const FONTE = "PressStart2P";
+
 const COR = {
   fundo: "#151515",
   branco: "#FFFFFF",
@@ -28,22 +32,29 @@ export default class Pratica extends Phaser.Scene {
   }
 
   create() {
+    this.qualidadeGraficos = aplicarQualidade(this);
+
     this.cameras.main.setBackgroundColor(COR.fundo);
 
     this.minigame = null;
+    this.minigameSelecionado = null;
     this.estado = "selecao";
     this.pagina = 0;
+
+    this.botoesInterface = [];
+    this.eventoInstrucao = null;
+
+    this.textoInstrucao = null;
+    this.barraFundo = null;
+    this.barraTempo = null;
 
     this.mostrarSelecao();
 
     this.events.once("shutdown", () => {
       this.limparMinigame();
+      this.limparTela();
     });
   }
-
-  
-  
-  
 
   mostrarSelecao() {
     this.limparTela();
@@ -52,30 +63,30 @@ export default class Pratica extends Phaser.Scene {
 
     const { width, height } = this.scale;
 
-    this.add
-      .text(width / 2, 65, "MODO PRÁTICA", {
-        fontFamily: FONTE,
-        fontSize: "25px",
-        color: COR.verde,
-      })
-      .setOrigin(0.5);
+    criarTexto(this, width / 2, 65, "MODO PRÁTICA", {
+      fontFamily: FONTE,
+      fontSize: "25px",
+      color: COR.verde,
+    }).setOrigin(0.5);
 
-    this.add
-      .text(width / 2, 105, "ESCOLHA UM MINIGAME", {
-        fontFamily: FONTE,
-        fontSize: "11px",
-        color: COR.branco,
-      })
-      .setOrigin(0.5);
+    criarTexto(this, width / 2, 105, "ESCOLHA UM MINIGAME", {
+      fontFamily: FONTE,
+      fontSize: "11px",
+      color: COR.branco,
+    }).setOrigin(0.5);
 
     if (MINIGAMES.length === 0) {
-      this.add
-        .text(width / 2, height / 2, "NENHUM MINIGAME ENCONTRADO", {
+      criarTexto(
+        this,
+        width / 2,
+        height / 2,
+        "NENHUM MINIGAME ENCONTRADO",
+        {
           fontFamily: FONTE,
           fontSize: "12px",
           color: COR.vermelho,
-        })
-        .setOrigin(0.5);
+        }
+      ).setOrigin(0.5);
 
       this.criarBotao(width / 2, height - 45, "VOLTAR AO MENU", () => {
         this.scene.start("Menu");
@@ -85,6 +96,7 @@ export default class Pratica extends Phaser.Scene {
     }
 
     const inicio = this.pagina * JOGOS_POR_PAGINA;
+
     const jogosPagina = MINIGAMES.slice(
       inicio,
       inicio + JOGOS_POR_PAGINA
@@ -98,7 +110,10 @@ export default class Pratica extends Phaser.Scene {
       const coluna = index % colunas;
       const linha = Math.floor(index / colunas);
 
-      const x = width / 2 + (coluna === 0 ? -espacamentoX / 2 : espacamentoX / 2);
+      const x =
+        width / 2 +
+        (coluna === 0 ? -espacamentoX / 2 : espacamentoX / 2);
+
       const y = 190 + linha * espacamentoY;
 
       const nome = this.formatarNome(Minigame.name);
@@ -108,15 +123,21 @@ export default class Pratica extends Phaser.Scene {
       });
     });
 
-    const totalPaginas = Math.ceil(MINIGAMES.length / JOGOS_POR_PAGINA);
+    const totalPaginas = Math.ceil(
+      MINIGAMES.length / JOGOS_POR_PAGINA
+    );
 
-    this.add
-      .text(width / 2, height - 85, `${this.pagina + 1} / ${totalPaginas}`, {
+    criarTexto(
+      this,
+      width / 2,
+      height - 85,
+      `${this.pagina + 1} / ${totalPaginas}`,
+      {
         fontFamily: FONTE,
         fontSize: "11px",
         color: COR.branco,
-      })
-      .setOrigin(0.5);
+      }
+    ).setOrigin(0.5);
 
     if (this.pagina > 0) {
       this.criarBotao(120, height - 85, "ANTERIOR", () => {
@@ -146,53 +167,87 @@ export default class Pratica extends Phaser.Scene {
       .toUpperCase();
   }
 
-  
-  
-  
+  criarBotaoSair() {
+    // Evita duplicar o botão.
+    if (this.botaoSair?.active) {
+      this.botaoSair.destroy();
+    }
+
+    const { width } = this.scale;
+
+    this.botaoSair = this.criarBotao(
+      width - 20,
+      20,
+      "SAIR",
+      () => this.voltarSelecao()
+    );
+
+    this.botaoSair
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(Number.MAX_SAFE_INTEGER);
+
+    this.children.bringToTop(this.botaoSair);
+  }
 
   iniciarMinigame(Minigame) {
-  this.limparMinigame();
-  this.limparTela();
+    // Impede iniciar outro jogo durante uma transição.
+    if (
+      this.estado !== "selecao" &&
+      this.estado !== "resultado"
+    ) {
+      return;
+    }
 
-  this.minigameSelecionado = Minigame;
-  this.estado = "instrucao";
-  this.minigame = new Minigame(this);
+    this.limparMinigame();
+    this.limparTela();
+
+    this.minigameSelecionado = Minigame;
+    this.estado = "instrucao";
+
+    this.minigame = new Minigame(this);
 
     const { width, height } = this.scale;
 
-    this.textoInstrucao = this.add
-      .text(width / 2, height / 2, this.minigame.instrucao || "", {
+    // Instruções do minigame.
+    this.textoInstrucao = criarTexto(
+      this,
+      width / 2,
+      height / 2,
+      this.minigame.instrucao || "",
+      {
         fontFamily: FONTE,
         fontSize: "35px",
         color: COR.branco,
         align: "center",
-      })
+      }
+    )
       .setOrigin(0.5)
       .setDepth(100);
 
-    this.criarBotao(width - 100, 30, "SAIR", () => {
-      this.voltarSelecao();
-    });
-
+    // Aguarda a instrução antes de iniciar o jogo.
     this.eventoInstrucao = this.time.delayedCall(1000, () => {
-      if (!this.minigame) return;
+      if (!this.minigame || this.estado !== "instrucao") return;
 
       this.textoInstrucao?.destroy();
       this.textoInstrucao = null;
 
-      this.tempoTotal = Math.max(0, this.minigame.duracao || 0) * 1000;
+      this.tempoTotal =
+        Math.max(0, this.minigame.duracao || 0) * 1000;
+
       this.tempoRestante = this.tempoTotal;
 
       this.criarBarraTempo();
 
+      // Inicia o minigame.
       this.minigame.iniciar();
+
       this.estado = "jogando";
+
+      // Cria o botão SAIR depois da inicialização.
+      this.criarBotaoSair();
     });
   }
-
-  
-  
-  
 
   criarBarraTempo() {
     const { width, height } = this.scale;
@@ -224,18 +279,20 @@ export default class Pratica extends Phaser.Scene {
 
     let resultado = this.minigame.resultado();
 
-    if (resultado === "jogando" && this.tempoTotal > 0 && this.tempoRestante <= 0) {
-      resultado = this.minigame.venceAoFimDoTempo ? "ganhou" : "perdeu";
+    if (
+      resultado === "jogando" &&
+      this.tempoTotal > 0 &&
+      this.tempoRestante <= 0
+    ) {
+      resultado = this.minigame.venceAoFimDoTempo
+        ? "ganhou"
+        : "perdeu";
     }
 
     if (resultado !== "jogando") {
       this.encerrarMinigame(resultado === "ganhou");
     }
   }
-
-  
-  
-  
 
   encerrarMinigame(venceu) {
     if (this.estado !== "jogando") return;
@@ -249,32 +306,59 @@ export default class Pratica extends Phaser.Scene {
     this.barraFundo?.destroy();
     this.barraTempo?.destroy();
 
-    this.add
-      .text(width / 2, height / 2 - 65, venceu ? "VOCÊ VENCEU!" : "FIM DE JOGO", {
+    this.barraFundo = null;
+    this.barraTempo = null;
+
+    criarTexto(
+      this,
+      width / 2,
+      height / 2 - 65,
+      venceu ? "VOCÊ VENCEU!" : "FIM DE JOGO",
+      {
         fontFamily: FONTE,
         fontSize: "25px",
         color: venceu ? COR.verde : COR.vermelho,
-      })
-      .setOrigin(0.5);
+      }
+    ).setOrigin(0.5);
 
-    this.criarBotao(width / 2, height / 2 + 15, "JOGAR NOVAMENTE", () => {
-      this.iniciarMinigame(this.minigameSelecionado);
-    });
+    this.criarBotao(
+      width / 2,
+      height / 2 + 15,
+      "JOGAR NOVAMENTE",
+      () => {
+        this.iniciarMinigame(this.minigameSelecionado);
+      }
+    );
 
-    this.criarBotao(width / 2, height / 2 + 75, "ESCOLHER OUTRO", () => {
-      this.mostrarSelecao();
-    });
+    this.criarBotao(
+      width / 2,
+      height / 2 + 75,
+      "ESCOLHER OUTRO",
+      () => {
+        this.mostrarSelecao();
+      }
+    );
 
-    this.criarBotao(width / 2, height / 2 + 135, "VOLTAR AO MENU", () => {
-      this.scene.start("Menu");
-    });
+    this.criarBotao(
+      width / 2,
+      height / 2 + 135,
+      "VOLTAR AO MENU",
+      () => {
+        this.scene.start("Menu");
+      }
+    );
   }
 
-  
-  
-  
-
   voltarSelecao() {
+    if (
+      this.estado !== "jogando" &&
+      this.estado !== "instrucao"
+    ) {
+      return;
+    }
+
+    this.estado = "selecao";
+
     this.limparMinigame();
     this.mostrarSelecao();
   }
@@ -285,9 +369,26 @@ export default class Pratica extends Phaser.Scene {
 
     this.minigame?.destruir();
     this.minigame = null;
+
+    if (this.botaoSair?.active) {
+      this.botaoSair.destroy();
+    }
+
+    this.botaoSair = null;
   }
 
   limparTela() {
+    // Remove os botões antigos da interface.
+    this.botoesInterface.forEach((botao) => {
+      if (!botao || !botao.active) return;
+
+      botao.disableInteractive();
+      botao.destroy();
+    });
+
+    this.botoesInterface = [];
+
+    // Remove os demais elementos visuais.
     this.children.removeAll(true);
 
     this.textoInstrucao = null;
@@ -296,21 +397,26 @@ export default class Pratica extends Phaser.Scene {
   }
 
   criarBotao(x, y, texto, acao) {
-    const botao = this.add
-      .text(x, y, texto, {
-        fontFamily: FONTE,
-        fontSize: "11px",
-        color: COR.branco,
-        backgroundColor: COR.cinza,
-        padding: {
-          x: 14,
-          y: 12,
-        },
-      })
+    const botao = criarTexto(this, x, y, texto, {
+      fontFamily: FONTE,
+      fontSize: "11px",
+      color: COR.branco,
+      backgroundColor: COR.cinza,
+      padding: {
+        x: 14,
+        y: 12,
+      },
+    })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
+    botao.setDepth(1000);
+
+    this.botoesInterface.push(botao);
+
     botao.on("pointerover", () => {
+      if (!botao.active || !botao.input?.enabled) return;
+
       botao.setStyle({
         color: COR.verde,
         backgroundColor: "#303030",
@@ -318,13 +424,24 @@ export default class Pratica extends Phaser.Scene {
     });
 
     botao.on("pointerout", () => {
+      if (!botao.active) return;
+
       botao.setStyle({
         color: COR.branco,
         backgroundColor: COR.cinza,
       });
     });
 
-    botao.on("pointerdown", acao);
+    botao.on("pointerdown", () => {
+      if (
+        !botao.active ||
+        !botao.input?.enabled
+      ) {
+        return;
+      }
+
+      acao();
+    });
 
     return botao;
   }

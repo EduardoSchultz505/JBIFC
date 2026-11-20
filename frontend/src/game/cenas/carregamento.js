@@ -1,4 +1,6 @@
+
 import Phaser from "phaser";
+import { criarTexto } from "../sistema/qualidadeGraficos";
 
 const FONTES = ['16px "PressStart2P"', '16px "Inter"'];
 
@@ -13,12 +15,10 @@ export default class Carregamento extends Phaser.Scene {
     const x = (width - largura) / 2;
     const y = height / 2;
 
-    this.add
-      .text(width / 2, y - 40, "Carregando...", {
-        fontSize: "32px",
-        color: "#67F5A5",
-      })
-      .setOrigin(0.5);
+    criarTexto(this, width / 2, y - 40, "Carregando...", {
+      fontSize: "32px",
+      color: "#67F5A5",
+    }).setOrigin(0.5);
 
     const grafico = this.add.graphics();
 
@@ -40,37 +40,49 @@ export default class Carregamento extends Phaser.Scene {
     this.load.image("logo", "/game/JBIFC.svg");
     this.load.image("IFC", "/game/IFC.svg");
 
-    this.load.image("botao", "/game/menu/placa.svg");
-    this.load.image("botao-hover", "/game/menu/placa_hover.svg");
-    this.load.image("corda", "/game/menu/corda.svg");
+    this.load.svg("botao", "/game/menu/placa.svg", { scale: 2 });
+    this.load.svg("botao-hover", "/game/menu/placa_hover.svg", { scale: 2 });
+    this.load.svg("corda", "/game/menu/corda.svg", { scale: 2 });
 
-    this.load.image("nsp-fundo", "/game/nao-seja-pego/tela_principal.svg", { width: 2560, height: 1440 })
-    this.load.image("nsp-cano", "/game/nao-seja-pego/cano.svg")
-    this.load.image("nsp-bird", "/game/nao-seja-pego/fap_bird.svg")
-    this.load.image("nsp-bird-bg", "/game/nao-seja-pego/fap_bird_bg.svg")
-    this.load.image("nsp-guia", "/game/nao-seja-pego/guia_anonima_bg.svg")
-    this.load.image("nsp-guilherme1", "/game/nao-seja-pego/guilherme1.svg")
-    this.load.image("nsp-guilherme2", "/game/nao-seja-pego/guilherme2.svg")
-    this.load.image("nsp-computador", "/game/nao-seja-pego/computador.svg")
+    this.load.audio("musica-pause", "/game/music/menu_pausa.mp3");
+    this.load.audio("musica-principal", "/game/music/menu_principal.mp3");
+    this.load.audio("musica-minigame1", "/game/music/minigame1.mp3");
+    this.load.audio("musica-minigame2", "/game/music/minigame2.mp3");
+    this.load.audio("musica-minigame3", "/game/music/minigame3.mp3");
+    this.load.audio("musica-minigame4", "/game/music/minigame4.mp3");
 
-    this.load.image("lock-fuca1", "/game/lockpick/fuca_porco1.svg")
-    this.load.image("lock-fuca2", "/game/lockpick/fuca_porco2.svg")
-    this.load.image("lock-lockpick1", "/game/lockpick/lockpick1.svg")
-    this.load.image("lock-lockpick2", "/game/lockpick/lockpick2.svg")
-    this.load.image("lock-lockpick3", "/game/lockpick/lockpick3.svg")
-    this.load.image("lock-lockpick4", "/game/lockpick/lockpick4.svg")
-    this.load.image("lock-lockpick5", "/game/lockpick/lockpick5.svg")
-    this.load.image("lock-lockpick6", "/game/lockpick/lockpick6.svg")
-    this.load.image("lock-porco1", "/game/lockpick/porco_corpo1.svg")
-    this.load.image("lock-porco2", "/game/lockpick/porco_corpo2.svg")
-    this.load.image("lock-portao", "/game/lockpick/portao.svg")
+    this.load.image(
+      "nsp-fundo",
+      "/game/nao-seja-pego/tela_principal.svg",
+      { width: 2560, height: 1440 }
+    );
+
+    this.load.image("nsp-cano", "/game/nao-seja-pego/cano.svg");
+    this.load.image("nsp-bird", "/game/nao-seja-pego/fap_bird.svg");
+    this.load.image("nsp-bird-bg", "/game/nao-seja-pego/fap_bird_bg.svg");
+    this.load.image("nsp-guia", "/game/nao-seja-pego/guia_anonima_bg.svg");
+    this.load.image("nsp-guilherme1", "/game/nao-seja-pego/guilherme1.svg");
+    this.load.image("nsp-guilherme2", "/game/nao-seja-pego/guilherme2.svg");
+    this.load.image("nsp-computador", "/game/nao-seja-pego/computador.svg");
+
+    this.load.image("lock-fuca1", "/game/lockpick/fuca_porco1.svg");
+    this.load.image("lock-fuca2", "/game/lockpick/fuca_porco2.svg");
+    this.load.image("lock-lockpick1", "/game/lockpick/lockpick1.svg");
+    this.load.image("lock-lockpick2", "/game/lockpick/lockpick2.svg");
+    this.load.image("lock-lockpick3", "/game/lockpick/lockpick3.svg");
+    this.load.image("lock-lockpick4", "/game/lockpick/lockpick4.svg");
+    this.load.image("lock-lockpick5", "/game/lockpick/lockpick5.svg");
+    this.load.image("lock-lockpick6", "/game/lockpick/lockpick6.svg");
+    this.load.image("lock-porco1", "/game/lockpick/porco_corpo1.svg");
+    this.load.image("lock-porco2", "/game/lockpick/porco_corpo2.svg");
+    this.load.image("lock-portao", "/game/lockpick/portao.svg");
   }
 
   create() {
-    
     Promise.allSettled(FONTES.map((f) => document.fonts.load(f))).then(() => {
-      
-      if (this.sys.isActive()) this.scene.start("Opening");
+      if (this.sys.isActive()) {
+        this.scene.start("Opening");
+      }
     });
   }
 }
