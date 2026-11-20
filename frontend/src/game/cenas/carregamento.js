@@ -76,6 +76,26 @@ export default class Carregamento extends Phaser.Scene {
     this.load.image("lock-porco1", "/game/lockpick/porco_corpo1.svg");
     this.load.image("lock-porco2", "/game/lockpick/porco_corpo2.svg");
     this.load.image("lock-portao", "/game/lockpick/portao.svg");
+
+    this.load.image("vdp-campo", "/game/vigilia-dos-porcos/campo_bg.svg");
+    this.load.image("vdp-pessoa1", "/game/vigilia-dos-porcos/pessoa1.svg");
+    this.load.image("vdp-pessoa2", "/game/vigilia-dos-porcos/pessoa2.svg");
+    this.load.image("vdp-pessoa3", "/game/vigilia-dos-porcos/pessoa3.svg");
+    this.load.image("vdp-pessoa4", "/game/vigilia-dos-porcos/pessoa4.svg");
+    this.load.image("vdp-pessoa5", "/game/vigilia-dos-porcos/pessoa5.svg");
+    this.load.image("vdp-pessoa6", "/game/vigilia-dos-porcos/pessoa6.svg");
+    this.load.image("vdp-pessoa7", "/game/vigilia-dos-porcos/pessoa7.svg");
+    this.load.image("vdp-pessoa8", "/game/vigilia-dos-porcos/pessoa8.svg");
+    this.load.image("vdp-pessoa9", "/game/vigilia-dos-porcos/pessoa9.svg");
+    this.load.image("vdp-pessoa10", "/game/vigilia-dos-porcos/pessoa10.svg");
+    this.load.image("vdp-pessoa11", "/game/vigilia-dos-porcos/pessoa11.svg");
+    this.load.image("vdp-pessoa12", "/game/vigilia-dos-porcos/pessoa12.svg");
+    this.load.image("vdp-pessoa13", "/game/vigilia-dos-porcos/pessoa13.svg");
+    this.load.image("vdp-pessoa14", "/game/vigilia-dos-porcos/pessoa14.svg");
+    this.load.image("vdp-pessoa15", "/game/vigilia-dos-porcos/pessoa15.svg");
+    this.load.image("vdp-pessoa16", "/game/vigilia-dos-porcos/pessoa16.svg");
+    this.load.image("vdp-pessoa17", "/game/vigilia-dos-porcos/pessoa17.svg");
+    this.load.image("vdp-pessoa18", "/game/vigilia-dos-porcos/pessoa18.svg");
   }
 
   create() {

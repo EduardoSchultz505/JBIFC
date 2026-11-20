@@ -44,7 +44,7 @@ const PERFIS = {
   },
 };
 
-// Obtém o nível salvo
+
 export function obterNivelQualidade() {
   try {
     const valor = Number(localStorage.getItem(CHAVE_QUALIDADE));
@@ -57,7 +57,7 @@ export function obterNivelQualidade() {
   }
 }
 
-// Salva o nível
+
 export function salvarNivelQualidade(nivel) {
   const valor = Number(nivel);
 
@@ -73,7 +73,7 @@ export function salvarNivelQualidade(nivel) {
   }
 }
 
-// Obtém o perfil completo
+
 export function obterPerfilQualidade() {
   const nivel = obterNivelQualidade();
 
@@ -83,7 +83,7 @@ export function obterPerfilQualidade() {
   };
 }
 
-// Aplica a qualidade à cena
+
 export function aplicarQualidade(scene) {
   const perfil = obterPerfilQualidade();
 
@@ -93,7 +93,7 @@ export function aplicarQualidade(scene) {
   return perfil;
 }
 
-// Localiza o perfil de qualidade da cena
+
 function obterPerfilDaCena(scene) {
   return (
     scene?.qualidadeGraficos ||
@@ -103,20 +103,20 @@ function obterPerfilDaCena(scene) {
   );
 }
 
-// Cria textos já configurados
+
 export function criarTexto(scene, x, y, conteudo, estilo = {}) {
   const perfil = obterPerfilDaCena(scene);
 
-  // Cria o texto usando o método original do Phaser.
+  
   const texto = scene.add.text(x, y, conteudo, estilo);
 
-  // Aplica a resolução definida nas configurações.
+  
   texto.setResolution(perfil.resolucaoTexto);
 
   return texto;
 }
 
-// Aplica a qualidade a um texto já criado
+
 export function aplicarQualidadeTexto(texto, scene) {
   if (!texto || typeof texto.setResolution !== "function") {
     return texto;
@@ -129,7 +129,7 @@ export function aplicarQualidadeTexto(texto, scene) {
   return texto;
 }
 
-// Configuração do renderizador do Phaser
+
 export function obterConfiguracaoRenderizacao() {
   const perfil = obterPerfilQualidade();
 

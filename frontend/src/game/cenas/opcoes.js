@@ -44,9 +44,9 @@ export default class Opcoes extends Phaser.Scene {
     this.aplicarVolume();
   }
 
-  // =========================================
-  // CONFIGURAÇÕES DE ÁUDIO
-  // =========================================
+  
+  
+  
 
   carregarVolume() {
     const valor = Number(
@@ -87,9 +87,9 @@ export default class Opcoes extends Phaser.Scene {
     this.atualizarTextoVolume();
   }
 
-  // =========================================
-  // TÍTULO
-  // =========================================
+  
+  
+  
 
   criarTitulo() {
     const { width } = this.scale;
@@ -107,9 +107,9 @@ export default class Opcoes extends Phaser.Scene {
     }).setOrigin(0.5);
   }
 
-  // =========================================
-  // QUALIDADE GRÁFICA
-  // =========================================
+  
+  
+  
 
   criarOpcoesQualidade() {
     const { width } = this.scale;
@@ -189,7 +189,7 @@ export default class Opcoes extends Phaser.Scene {
 
     this.atualizarBotoesQualidade();
 
-    // Aviso sobre a necessidade de reiniciar.
+    
     this.textoAviso = criarTexto(
       this,
       width / 2,
@@ -251,9 +251,9 @@ export default class Opcoes extends Phaser.Scene {
     }
   }
 
-  // =========================================
-  // ÁUDIO
-  // =========================================
+  
+  
+  
 
   criarOpcoesAudio() {
     const { width } = this.scale;
@@ -313,9 +313,9 @@ export default class Opcoes extends Phaser.Scene {
     );
   }
 
-  // =========================================
-  // APLICAR E REINICIAR
-  // =========================================
+  
+  
+  
 
   criarBotaoAplicar() {
     const { width } = this.scale;
@@ -386,16 +386,16 @@ export default class Opcoes extends Phaser.Scene {
       .setText("REINICIANDO O JOGO...")
       .setColor(COR.verde);
 
-    // Recarrega a página para recriar o Phaser
-    // com a nova configuração de renderização.
+    
+    
     this.time.delayedCall(400, () => {
       window.location.reload();
     });
   }
 
-  // =========================================
-  // BOTÃO VOLTAR
-  // =========================================
+  
+  
+  
 
   criarBotaoVoltar() {
     const { width, height } = this.scale;
@@ -410,9 +410,9 @@ export default class Opcoes extends Phaser.Scene {
     );
   }
 
-  // =========================================
-  // BOTÃO GENÉRICO
-  // =========================================
+  
+  
+  
 
   criarBotao(x, y, texto, acao) {
     const botao = criarTexto(this, x, y, texto, {

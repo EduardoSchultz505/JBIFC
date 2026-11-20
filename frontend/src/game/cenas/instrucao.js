@@ -2,7 +2,7 @@
 import Phaser from "phaser";
 import { criarTexto } from "../sistema/qualidadeGraficos";
 
-// Exportadas para a Partida reaproveitar no HUD e no feedback
+
 export const FONTE = "PressStart2P";
 
 export const COR = {
@@ -12,7 +12,7 @@ export const COR = {
   branco: "#FFFFFF",
 };
 
-// Tempos em ms: painel entra, fica parado para leitura, painel sai
+
 const TEMPOS = {
   entrada: 350,
   leitura: 1800,
@@ -23,8 +23,8 @@ const COR_PAINEL = 0x141b1f;
 const OPACIDADE_PAINEL = 0.85;
 const CHAVE = "Instrucao";
 
-// A animação roda em uma cena própria, por cima da Partida.
-// Enquanto ela toca, a Partida fica pausada.
+
+
 class CenaInstrucao extends Phaser.Scene {
   constructor() {
     super(CHAVE);
@@ -47,7 +47,7 @@ class CenaInstrucao extends Phaser.Scene {
       wordWrap: { width: width * 0.85 },
     });
 
-    // Painel começa com largura 0, preso na borda esquerda
+    
     this.painel = this.add
       .rectangle(0, 0, width, height, COR_PAINEL, OPACIDADE_PAINEL)
       .setOrigin(0, 0)
@@ -83,10 +83,10 @@ class CenaInstrucao extends Phaser.Scene {
       texto.setOrigin(0.5).setAlpha(0);
     });
 
-    // Se a Partida for encerrada no meio, esta cena também para
+    
     cenaPai.events.once("shutdown", this.cancelar, this);
 
-    // Entra da esquerda para a direita
+    
     this.tweens.add({
       targets: this.painel,
       scaleX: 1,
@@ -112,7 +112,7 @@ class CenaInstrucao extends Phaser.Scene {
       duration: 150,
     });
 
-    // Volta para a esquerda
+    
     this.tweens.add({
       targets: this.painel,
       scaleX: 0,
@@ -133,7 +133,7 @@ class CenaInstrucao extends Phaser.Scene {
 
     this.scene.stop();
 
-    // Descongela o minigame
+    
     cenaPai.scene.resume();
 
     aoFinalizar();
@@ -141,7 +141,7 @@ class CenaInstrucao extends Phaser.Scene {
 }
 
 export function mostrarInstrucao(cena, minigame, aoFinalizar) {
-  // Registra a cena uma única vez, sem precisar mexer no config do Phaser
+  
   if (!cena.scene.get(CHAVE)) {
     cena.scene.add(CHAVE, CenaInstrucao, false);
   }

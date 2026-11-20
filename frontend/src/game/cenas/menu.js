@@ -19,7 +19,7 @@ export default class Menu extends Phaser.Scene {
     const altura = this.scale.height;
     const k = altura / 450;
 
-    // Música persistente entre Menu e Prática.
+    
     let musicaMenu = this.registry.get("musicaMenu");
 
     if (!musicaMenu || (!musicaMenu.isPlaying && !musicaMenu.isPaused)) {

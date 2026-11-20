@@ -168,7 +168,7 @@ export default class Pratica extends Phaser.Scene {
   }
 
   criarBotaoSair() {
-    // Evita duplicar o botão.
+    
     if (this.botaoSair?.active) {
       this.botaoSair.destroy();
     }
@@ -191,7 +191,7 @@ export default class Pratica extends Phaser.Scene {
   }
 
   iniciarMinigame(Minigame) {
-    // Impede iniciar outro jogo durante uma transição.
+    
     if (
       this.estado !== "selecao" &&
       this.estado !== "resultado"
@@ -209,7 +209,7 @@ export default class Pratica extends Phaser.Scene {
 
     const { width, height } = this.scale;
 
-    // Instruções do minigame.
+    
     this.textoInstrucao = criarTexto(
       this,
       width / 2,
@@ -225,7 +225,7 @@ export default class Pratica extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(100);
 
-    // Aguarda a instrução antes de iniciar o jogo.
+    
     this.eventoInstrucao = this.time.delayedCall(1000, () => {
       if (!this.minigame || this.estado !== "instrucao") return;
 
@@ -239,12 +239,12 @@ export default class Pratica extends Phaser.Scene {
 
       this.criarBarraTempo();
 
-      // Inicia o minigame.
+      
       this.minigame.iniciar();
 
       this.estado = "jogando";
 
-      // Cria o botão SAIR depois da inicialização.
+      
       this.criarBotaoSair();
     });
   }
@@ -378,7 +378,7 @@ export default class Pratica extends Phaser.Scene {
   }
 
   limparTela() {
-    // Remove os botões antigos da interface.
+    
     this.botoesInterface.forEach((botao) => {
       if (!botao || !botao.active) return;
 
@@ -388,7 +388,7 @@ export default class Pratica extends Phaser.Scene {
 
     this.botoesInterface = [];
 
-    // Remove os demais elementos visuais.
+    
     this.children.removeAll(true);
 
     this.textoInstrucao = null;
