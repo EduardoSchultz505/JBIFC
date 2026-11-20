@@ -37,9 +37,15 @@ export default class Partida extends Phaser.Scene {
     this.vidas = VIDAS;
     this.pontos = 0;
     this.fasesCompletas = 0;
+
+    // Estatísticas das conquistas
+    this.sequenciaAtual = 0;
+    this.sequenciaMaxima = 0;
+    this.venceuComUmaVida = false;
+    this.minigameMaisRapidoMs = null;
+
     this.ultimo = null;
     this.minigame = null;
-    this.minigameMaisRapidoMs = null;
     this.estado = "instrucao";
     this.partidaTerminada = false;
 
@@ -256,7 +262,6 @@ export default class Partida extends Phaser.Scene {
 
     this.minigame = new Minigame(this);
 
-    // Aplica a dificuldade correspondente aos pontos acumulados.
     this.minigame.aplicarDificuldade?.(this.nivel());
 
     this.estado = "instrucao";
@@ -298,6 +303,8 @@ export default class Partida extends Phaser.Scene {
   }
 
   encerrarRodada(venceu) {
+    if (this.estado !== "jogando") return;
+
     this.estado = "feedback";
     this.barra.setScale(0, 1);
 
@@ -307,20 +314,35 @@ export default class Partida extends Phaser.Scene {
         ? this.tempoTotal - this.tempoRestante
         : 0;
 
-    if (tempoExecutado > 0) {
-      if (
-        this.minigameMaisRapidoMs === null ||
-        tempoExecutado < this.minigameMaisRapidoMs
-      ) {
-        this.minigameMaisRapidoMs = tempoExecutado;
-      }
-    }
-
     if (venceu) {
       const nivelAnterior = this.nivel();
 
+      // Atualiza pontuação e vitórias
       this.pontos += PONTOS_POR_VITORIA;
       this.fasesCompletas += 1;
+
+      // Atualiza sequência de vitórias consecutivas
+      this.sequenciaAtual += 1;
+
+      this.sequenciaMaxima = Math.max(
+        this.sequenciaMaxima,
+        this.sequenciaAtual
+      );
+
+      // Registra vitória com exatamente uma vida restante
+      if (this.vidas === 1) {
+        this.venceuComUmaVida = true;
+      }
+
+      // Registra o menor tempo somente em vitórias
+      if (tempoExecutado > 0) {
+        if (
+          this.minigameMaisRapidoMs === null ||
+          tempoExecutado < this.minigameMaisRapidoMs
+        ) {
+          this.minigameMaisRapidoMs = tempoExecutado;
+        }
+      }
 
       const nivelAtual = this.nivel();
       const subiuDeNivel = nivelAtual > nivelAnterior;
@@ -339,7 +361,9 @@ export default class Partida extends Phaser.Scene {
         );
       }
     } else {
+      // Perdeu: reduz uma vida e zera a sequência atual
       this.vidas -= 1;
+      this.sequenciaAtual = 0;
 
       this.textoCentro
         .setText("ERROU!")
@@ -378,15 +402,12 @@ export default class Partida extends Phaser.Scene {
       score: pontuacaoFinal,
       vidasRestantes: this.vidas,
       fasesCompletas: this.fasesCompletas,
+      sequenciaMaxima: this.sequenciaMaxima,
       minigameMaisRapidoMs: this.minigameMaisRapidoMs,
+      venceuComUmaVida: this.venceuComUmaVida,
     };
 
-    console.info("[GameOver] Pontuação capturada:", {
-      vidas: this.vidas,
-      pontuacaoFinal,
-      hud: this.textoPontos.text,
-      minigameMaisRapidoMs: this.minigameMaisRapidoMs,
-    });
+    console.info("[GameOver] Resumo da partida:", resumoPartida);
 
     this.game.events.emit("fim-de-partida", resumoPartida);
   }

@@ -83,7 +83,7 @@ export default class Lockpick {
       },
     });
 
-    // Texto criado com a qualidade gráfica centralizada.
+    
     this.textoTecla = criarTexto(this.scene, cx, 70, "", {
       fontFamily: FONTE,
       fontSize: "64px",

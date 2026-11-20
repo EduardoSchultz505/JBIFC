@@ -1,16 +1,10 @@
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize, CirclePlay, Monitor } from "lucide-react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router";
 import { criarJogo } from "../game/loadGame";
 import Container from "../components/Container";
-import {
-  evaluateAchievementUnlocks,
-  readAchievementList,
-  readPartidasTotais,
-  writeAchievementList,
-  writePartidasTotais,
-} from "../config/achievements";
 
 export default function Jogar() {
   const [iniciado, setIniciado] = useState(false);
@@ -18,15 +12,20 @@ export default function Jogar() {
   const [gameOver, setGameOver] = useState(null);
   const [estadoSalvamento, setEstadoSalvamento] = useState("idle");
   const [mensagem, setMensagem] = useState("");
-  const [token, setToken] = useState(() => localStorage.getItem("jbifc_token"));
+  const [token, setToken] = useState(() =>
+    localStorage.getItem("jbifc_token"),
+  );
   const [usuario, setUsuario] = useState("");
-  const [authCarregando, setAuthCarregando] = useState(() => Boolean(localStorage.getItem("jbifc_token")));
+  const [authCarregando, setAuthCarregando] = useState(() =>
+    Boolean(localStorage.getItem("jbifc_token")),
+  );
   const [authErro, setAuthErro] = useState("");
   const [conquistasNovas, setConquistasNovas] = useState([]);
-  
+
   const [mobile] = useState(
     () => window.matchMedia("(hover: none) and (pointer: coarse)").matches,
   );
+
   const navigate = useNavigate();
 
   const containerRef = useRef(null);
@@ -36,81 +35,84 @@ export default function Jogar() {
   const jogadorIdRef = useRef(null);
   const usuarioRef = useRef("");
   const tokenRef = useRef(token);
-  
   const resumoRef = useRef(null);
 
   const logado = Boolean(token && usuario);
 
-  
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setAuthCarregando(false);
+      return;
+    }
 
-    axios.get("/api/usuario", {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 70000,
-    }).then(({ data }) => {
-      setUsuario(data.usuario);
-      usuarioRef.current = data.usuario;
-      jogadorIdRef.current = data.id;
-      tokenRef.current = token;
-    }).catch((erro) => {
-      
-      if (erro.response?.status !== 401) {
-        setAuthErro("Não foi possível verificar seu login agora. Recarregue a página para tentar de novo.");
-        return;
-      }
-      localStorage.removeItem("jbifc_token");
-      setToken(null);
-      setUsuario("");
-      usuarioRef.current = "";
-      jogadorIdRef.current = null;
-      tokenRef.current = null;
-    }).finally(() => setAuthCarregando(false));
+    axios
+      .get("/api/usuario", {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 70000,
+      })
+      .then(({ data }) => {
+        setUsuario(data.usuario);
+        usuarioRef.current = data.usuario;
+        jogadorIdRef.current = data.id;
+        tokenRef.current = token;
+      })
+      .catch((erro) => {
+        if (erro.response?.status !== 401) {
+          setAuthErro(
+            "Não foi possível verificar seu login agora. Recarregue a página para tentar de novo.",
+          );
+          return;
+        }
+
+        localStorage.removeItem("jbifc_token");
+        setToken(null);
+        setUsuario("");
+        usuarioRef.current = "";
+        jogadorIdRef.current = null;
+        tokenRef.current = null;
+      })
+      .finally(() => setAuthCarregando(false));
   }, [token]);
 
-  
-  const processarConquistasDemo = useCallback((resumoFinal) => {
-    const contexto = { userId: null, demoMode: true };
-    const existentes = readAchievementList(contexto);
-    const partidasDepois = readPartidasTotais(contexto) + 1;
-    const novas = evaluateAchievementUnlocks(
-      { ...resumoFinal, partidasTotaisApos: partidasDepois },
-      existentes,
-    );
-
-    writeAchievementList([...existentes, ...novas], contexto);
-    writePartidasTotais(partidasDepois, contexto);
-    setConquistasNovas(novas);
-  }, []);
-
-  
   const salvarPontuacao = useCallback(async (pontuacaoCapturada) => {
-    if (salvamentoEmAndamentoRef.current || pontuacaoSalvaRef.current) return;
+    if (
+      salvamentoEmAndamentoRef.current ||
+      pontuacaoSalvaRef.current
+    ) {
+      return;
+    }
 
-    
-    if (!tokenRef.current || !jogadorIdRef.current || !usuarioRef.current) return;
+    if (
+      !tokenRef.current ||
+      !jogadorIdRef.current ||
+      !usuarioRef.current
+    ) {
+      return;
+    }
 
     const pontuacaoFinal = Number(pontuacaoCapturada);
+
     if (!Number.isInteger(pontuacaoFinal) || pontuacaoFinal < 0) {
       setEstadoSalvamento("erro");
       setMensagem("A pontuação final não é válida.");
       return;
     }
+
     if (!resumoRef.current) {
       setEstadoSalvamento("erro");
       setMensagem("Os dados da partida não foram encontrados.");
       return;
-    } 
+    }
 
     salvamentoEmAndamentoRef.current = true;
     setEstadoSalvamento("salvando");
     setMensagem("");
 
-    
     const dados = {
       pontuacao: pontuacaoFinal,
       resumo: resumoRef.current,
     };
+
     console.info("[Ranking] Dados enviados ao backend:", {
       nome: usuarioRef.current,
       dados,
@@ -118,21 +120,43 @@ export default function Jogar() {
 
     try {
       const resposta = await axios.post("/api/ranking", dados, {
-        headers: { Authorization: `Bearer ${tokenRef.current}` },
+        headers: {
+          Authorization: `Bearer ${tokenRef.current}`,
+        },
         timeout: 70000,
       });
-      console.info("[Ranking] Resposta do backend:", resposta.status, resposta.data);
+
+      console.info(
+        "[Ranking] Resposta do backend:",
+        resposta.status,
+        resposta.data,
+      );
+
       pontuacaoSalvaRef.current = true;
       setEstadoSalvamento("salvo");
-      setConquistasNovas(resposta.data.conquistasNovas ?? []);
 
-      const melhor = Number(resposta.data.registro?.pontuacao ?? pontuacaoFinal);
+      setConquistasNovas(
+        resposta.data.conquistasNovas ?? [],
+      );
+
+      const melhor = Number(
+        resposta.data.registro?.pontuacao ?? pontuacaoFinal,
+      );
+
       const posicao = resposta.data.posicao;
+
       if (melhor > pontuacaoFinal) {
-        
-        setMensagem(`Sua melhor pontuação continua sendo ${melhor}${posicao ? ` (${posicao}º lugar)` : ""}.`);
+        setMensagem(
+          `Sua melhor pontuação continua sendo ${melhor}${
+            posicao ? ` (${posicao}º lugar)` : ""
+          }.`,
+        );
       } else {
-        setMensagem(posicao ? `Pontuação salva! Sua posição: ${posicao}º` : "Pontuação salva com sucesso!");
+        setMensagem(
+          posicao
+            ? `Pontuação salva! Sua posição: ${posicao}º`
+            : "Pontuação salva com sucesso!",
+        );
       }
     } catch (erro) {
       console.error("[Ranking] Erro ao salvar a pontuação:", {
@@ -140,8 +164,11 @@ export default function Jogar() {
         dados: erro.response?.data,
         mensagem: erro.message,
       });
+
       setEstadoSalvamento("erro");
-      setMensagem("Não foi possível salvar a pontuação. Tente novamente.");
+      setMensagem(
+        "Não foi possível salvar a pontuação. Tente novamente.",
+      );
     } finally {
       salvamentoEmAndamentoRef.current = false;
     }
@@ -168,38 +195,52 @@ export default function Jogar() {
         const aoTerminarPartida = (resumoFinal) => {
           if (cancelado) return;
 
-          const pontuacaoExata = Number(resumoFinal?.score ?? resumoFinal ?? 0);
+          const pontuacaoExata = Number(
+            resumoFinal?.score ?? resumoFinal ?? 0,
+          );
+
           const resumoNormalizado = {
             score: pontuacaoExata,
-            vidasRestantes: Number(resumoFinal?.vidasRestantes ?? 0),
-            sequenciaMaxima: Number(resumoFinal?.sequenciaMaxima ?? 0),
-            fasesCompletas: Number(resumoFinal?.fasesCompletas ?? 0),
+            vidasRestantes: Number(
+              resumoFinal?.vidasRestantes ?? 0,
+            ),
+            sequenciaMaxima: Number(
+              resumoFinal?.sequenciaMaxima ?? 0,
+            ),
+            fasesCompletas: Number(
+              resumoFinal?.fasesCompletas ?? 0,
+            ),
             minigameMaisRapidoMs:
-              resumoFinal?.minigameMaisRapidoMs === null || resumoFinal?.minigameMaisRapidoMs === undefined
+              resumoFinal?.minigameMaisRapidoMs == null
                 ? null
                 : Number(resumoFinal.minigameMaisRapidoMs),
+            venceuComUmaVida:
+              resumoFinal?.venceuComUmaVida === true,
           };
 
           console.info("[GameOver] Jogador conectado:", {
             jogadorId: jogadorIdRef.current,
             nome: usuarioRef.current,
           });
-          console.info("[GameOver] Pontuação capturada no Phaser:", {
-            pontuacaoFinal: pontuacaoExata,
-            resumo: resumoNormalizado,
-          });
+
+          console.info(
+            "[GameOver] Resumo da partida:",
+            resumoNormalizado,
+          );
+
           salvamentoEmAndamentoRef.current = false;
           pontuacaoSalvaRef.current = false;
+
           resumoRef.current = resumoNormalizado;
+
           setEstadoSalvamento("idle");
           setMensagem("");
           setConquistasNovas([]);
           setGameOver(pontuacaoExata);
 
+          // Somente jogadores autenticados salvam dados.
           if (tokenRef.current && jogadorIdRef.current) {
-            salvarPontuacao(pontuacaoExata); 
-          } else {
-            processarConquistasDemo(resumoNormalizado);
+            salvarPontuacao(pontuacaoExata);
           }
         };
 
@@ -220,11 +261,21 @@ export default function Jogar() {
         jogo.scale.on("enterfullscreen", atualizarTelaCheia);
         jogo.scale.on("leavefullscreen", atualizarTelaCheia);
 
-        document.addEventListener("fullscreenchange", atualizarTelaCheia);
+        document.addEventListener(
+          "fullscreenchange",
+          atualizarTelaCheia,
+        );
 
         jogo.events.once("destroy", () => {
-          document.removeEventListener("fullscreenchange", atualizarTelaCheia);
-          jogo.events.off("fim-de-partida", aoTerminarPartida);
+          document.removeEventListener(
+            "fullscreenchange",
+            atualizarTelaCheia,
+          );
+
+          jogo.events.off(
+            "fim-de-partida",
+            aoTerminarPartida,
+          );
         });
       } catch (erro) {
         console.error("Erro ao iniciar o jogo:", erro);
@@ -247,7 +298,7 @@ export default function Jogar() {
         jogoRef.current = null;
       }
     };
-  }, [iniciado, processarConquistasDemo, salvarPontuacao]);
+  }, [iniciado, salvarPontuacao]);
 
   async function alternarTelaCheia() {
     const jogo = jogoRef.current;
@@ -269,6 +320,7 @@ export default function Jogar() {
     setGameOver(null);
     setConquistasNovas([]);
     setIniciado(false);
+    resumoRef.current = null;
   }
 
   return (
@@ -279,11 +331,15 @@ export default function Jogar() {
             role="note"
             className="mb-4 flex items-start gap-3 rounded-lg border border-sun bg-sun/15 p-4 text-sm leading-snug"
           >
-            <Monitor aria-hidden="true" size={20} className="mt-0.5 shrink-0" />
+            <Monitor
+              aria-hidden="true"
+              size={20}
+              className="mt-0.5 shrink-0"
+            />
             <p>
-              <strong>Este jogo só funciona em computador.</strong> Em celular
-              e tablet os controles podem não responder. Abra esta página em um
-              computador para jogar.
+              <strong>Este jogo só funciona em computador.</strong>{" "}
+              Em celular e tablet os controles podem não responder.
+              Abra esta página em um computador para jogar.
             </p>
           </div>
         )}
@@ -298,8 +354,16 @@ export default function Jogar() {
               type="button"
               onClick={alternarTelaCheia}
               disabled={!iniciado}
-              title={telaCheia ? "Sair da tela cheia" : "Tela cheia"}
-              aria-label={telaCheia ? "Sair da tela cheia" : "Tela cheia"}
+              title={
+                telaCheia
+                  ? "Sair da tela cheia"
+                  : "Tela cheia"
+              }
+              aria-label={
+                telaCheia
+                  ? "Sair da tela cheia"
+                  : "Tela cheia"
+              }
               className="cursor-pointer rounded-md border border-white/15 p-2.5 transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Maximize aria-hidden="true" size={18} />
@@ -310,25 +374,42 @@ export default function Jogar() {
             {!iniciado && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-game">
                 {authCarregando ? (
-                  <p role="status" className="text-sm text-white/70">Verificando login...</p>
+                  <p
+                    role="status"
+                    className="text-sm text-white/70"
+                  >
+                    Verificando login...
+                  </p>
                 ) : (
                   <div className="flex flex-col items-center">
                     <p className="mb-4 text-sm font-semibold text-white/80">
-                      {logado ? `Jogando como ${usuario}` : "Jogando sem conta"}
+                      {logado
+                        ? `Jogando como ${usuario}`
+                        : "Jogando sem conta"}
                     </p>
+
                     {authErro && (
-                      <p className="mb-4 max-w-xs text-center text-xs text-danger" role="alert">
+                      <p
+                        className="mb-4 max-w-xs text-center text-xs text-danger"
+                        role="alert"
+                      >
                         {authErro}
                       </p>
                     )}
+
                     <button
                       type="button"
                       onClick={() => setIniciado(true)}
                       className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md bg-[#C5B49B] px-6 py-3 text-lg font-bold text-[#292621] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                     >
-                      <CirclePlay aria-hidden="true" size={24} strokeWidth={2} />
+                      <CirclePlay
+                        aria-hidden="true"
+                        size={24}
+                        strokeWidth={2}
+                      />
                       Jogar
                     </button>
+
                     {!logado && (
                       <Link
                         to="/login"
@@ -345,7 +426,9 @@ export default function Jogar() {
             <div
               id="phaser-container"
               ref={containerRef}
-              className={`absolute inset-0 ${iniciado ? "visible" : "invisible"}`}
+              className={`absolute inset-0 ${
+                iniciado ? "visible" : "invisible"
+              }`}
             >
               {gameOver !== null && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#151515]/95 px-4">
@@ -353,15 +436,20 @@ export default function Jogar() {
                     <h2 className="text-xl font-bold text-danger md:text-2xl">
                       GAME OVER
                     </h2>
+
                     <p className="mt-3 text-sm text-white/80 md:text-base">
                       Pontuação final:{" "}
-                      <strong className="text-sun">{gameOver}</strong>
+                      <strong className="text-sun">
+                        {gameOver}
+                      </strong>
                     </p>
 
                     {logado && mensagem && (
                       <p
                         className={`mt-3 text-sm ${
-                          estadoSalvamento === "salvo" ? "text-[#67F5A5]" : "text-danger"
+                          estadoSalvamento === "salvo"
+                            ? "text-[#67F5A5]"
+                            : "text-danger"
                         }`}
                         role="alert"
                       >
@@ -374,15 +462,28 @@ export default function Jogar() {
                         <p className="text-xs font-bold uppercase tracking-widest text-sun">
                           Novas conquistas
                         </p>
+
                         <ul className="mt-3 space-y-2">
                           {conquistasNovas.map((item) => (
-                            <li key={item.id} className="flex items-start gap-3 rounded-lg bg-[#151515]/40 p-2">
-                              <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-lg bg-sun/15 text-xl">
+                            <li
+                              key={item.id}
+                              className="flex items-start gap-3 rounded-lg bg-[#151515]/40 p-2"
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="flex size-9 items-center justify-center rounded-lg bg-sun/15 text-xl"
+                              >
                                 {item.icon}
                               </span>
+
                               <div>
-                                <p className="text-sm font-bold text-white">{item.name}</p>
-                                <p className="text-xs text-white/70">{item.description}</p>
+                                <p className="text-sm font-bold text-white">
+                                  {item.name}
+                                </p>
+
+                                <p className="text-xs text-white/70">
+                                  {item.description}
+                                </p>
                               </div>
                             </li>
                           ))}
@@ -395,11 +496,23 @@ export default function Jogar() {
                         <button
                           type="button"
                           className="min-h-11 flex-1 cursor-pointer rounded-lg bg-[#67F5A5] px-4 font-bold text-[#151515] disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() => salvarPontuacao(gameOver)}
-                          disabled={estadoSalvamento === "salvando" || estadoSalvamento === "salvo"}
+                          onClick={() =>
+                            salvarPontuacao(gameOver)
+                          }
+                          disabled={
+                            estadoSalvamento === "salvando" ||
+                            estadoSalvamento === "salvo"
+                          }
                         >
-                          {estadoSalvamento === "salvando" ? "Salvando..." : estadoSalvamento === "salvo" ? "Pontuação salva" : estadoSalvamento === "erro" ? "Tentar novamente" : "Salvar pontuação"}
+                          {estadoSalvamento === "salvando"
+                            ? "Salvando..."
+                            : estadoSalvamento === "salvo"
+                              ? "Pontuação salva"
+                              : estadoSalvamento === "erro"
+                                ? "Tentar novamente"
+                                : "Salvar pontuação"}
                         </button>
+
                         <button
                           type="button"
                           className="min-h-11 flex-1 cursor-pointer rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
@@ -411,8 +524,10 @@ export default function Jogar() {
                     ) : (
                       <>
                         <p className="mt-3 text-xs text-white/60">
-                          Você jogou sem conta, então esta pontuação não entrou no ranking.
+                          Você jogou sem conta. Sua pontuação e
+                          conquistas não serão salvas.
                         </p>
+
                         <button
                           type="button"
                           className="mt-5 min-h-11 w-full cursor-pointer rounded-lg border border-white/20 px-4 font-semibold hover:bg-white/10"
@@ -423,15 +538,16 @@ export default function Jogar() {
                       </>
                     )}
 
-                    {logado && estadoSalvamento === "salvo" && (
-                      <button
-                        type="button"
-                        className="mt-3 min-h-11 w-full cursor-pointer rounded-lg border border-sun px-4 font-semibold text-sun hover:bg-white/10"
-                        onClick={() => navigate("/ranking")}
-                      >
-                        Ver ranking
-                      </button>
-                    )}
+                    {logado &&
+                      estadoSalvamento === "salvo" && (
+                        <button
+                          type="button"
+                          className="mt-3 min-h-11 w-full cursor-pointer rounded-lg border border-sun px-4 font-semibold text-sun hover:bg-white/10"
+                          onClick={() => navigate("/ranking")}
+                        >
+                          Ver ranking
+                        </button>
+                      )}
                   </div>
                 </div>
               )}
