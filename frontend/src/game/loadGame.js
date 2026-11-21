@@ -42,18 +42,16 @@ export function criarJogo(parent) {
     ],
   });
 
-  const volumeSalvo = Number(
-    localStorage.getItem(CHAVE_VOLUME)
-  );
+  const volumeSalvo = localStorage.getItem(CHAVE_VOLUME);
 
-  const volume =
-    Number.isFinite(volumeSalvo) &&
-    volumeSalvo >= 0 &&
-    volumeSalvo <= 100
-      ? volumeSalvo
-      : 100;
+const volume =
+  volumeSalvo !== null &&
+  Number(volumeSalvo) > 0 &&
+  Number(volumeSalvo) <= 100
+    ? Number(volumeSalvo)
+    : 100;
 
-  jogo.sound.volume = volume / 100;
+jogo.sound.volume = volume / 100;
 
   // Desbloqueia o áudio após a primeira interação do usuário.
   const desbloquearAudio = () => {
