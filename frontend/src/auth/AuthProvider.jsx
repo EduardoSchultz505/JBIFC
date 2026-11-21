@@ -41,12 +41,6 @@ export default function AuthProvider({ children }) {
   });
 
   useEffect(() => {
-    try {
-      localStorage.removeItem("jbifc_token");
-    } catch {
-      // armazenamento indisponível
-    }
-
     const verificar = () => consultarSessao().then(setSessao);
 
     verificar();

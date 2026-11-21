@@ -22,7 +22,7 @@ const TEXTURAS = [
 const CANO_ALTO = "nsp-cano-alto";
 
 export default class JogueSemSerPego {
-  titulo = "JONHA BIRD";
+  static titulo = "JONHA BIRD";
   descricao = "Jogue o clássico Jonha Bird, mas cuidado! O professor não pode ver você jogando. Quando ele aparecer, esconda o jogo rapidamente apertando E.";
   controles = [
     "ESPAÇO / MOUSE 1: PULAR",

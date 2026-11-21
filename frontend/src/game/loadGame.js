@@ -55,5 +55,22 @@ export function criarJogo(parent) {
 
   jogo.sound.volume = volume / 100;
 
+  // Desbloqueia o áudio após a primeira interação do usuário.
+  const desbloquearAudio = () => {
+    if (!jogo.sound.locked) return;
+
+    jogo.sound.unlock();
+  };
+
+  const canvas = jogo.canvas;
+
+  canvas.addEventListener("pointerdown", desbloquearAudio, {
+    once: true,
+  });
+
+  canvas.addEventListener("keydown", desbloquearAudio, {
+    once: true,
+  });
+
   return jogo;
 }

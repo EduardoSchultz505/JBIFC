@@ -39,7 +39,7 @@ export default class Carregamento extends Phaser.Scene {
 
     this.load.svg("logo", "/game/JBIFC.svg");
     this.load.svg("IFC", "/game/IFC.svg");
-    this.load.image("professor", "game/renato.jpg")
+    this.load.image("professor", "game/menu/renato.jpg")
 
     this.load.svg("menu-arvore", "/game/menu/arvore.svg");
     this.load.svg("menu-ceu", "/game/menu/ceu.svg");
@@ -99,6 +99,11 @@ export default class Carregamento extends Phaser.Scene {
     this.load.svg("vdp-pessoa16", "/game/vigilia-dos-porcos/pessoa16.svg");
     this.load.svg("vdp-pessoa17", "/game/vigilia-dos-porcos/pessoa17.svg");
     this.load.svg("vdp-pessoa18", "/game/vigilia-dos-porcos/pessoa18.svg");
+
+    this.load.svg("tot-totem_bg", "/game/totem/totem_bg.svg");
+    this.load.svg("tot-certo", "/game/totem/item_certo.svg");
+    this.load.svg("tot-errado", "/game/totem/item_errado.svg");
+    this.load.svg("tot-papel", "/game/totem/papel.svg");
   }
 
   create() {

@@ -27,6 +27,12 @@ const COR = {
 
 const JOGOS_POR_PAGINA = 6;
 
+const NOMES_MINIGAMES = {
+  BL: "LOCKPICK",
+  OL: "JOGUE SEM SER PEGO",
+  AL: "VIGÍLIA DOS PORCOS",
+};
+
 export default class Pratica extends Phaser.Scene {
   constructor() {
     super("Pratica");
@@ -161,13 +167,13 @@ export default class Pratica extends Phaser.Scene {
   }
 
   formatarNome(nome) {
-    if (!nome) return "MINIGAME";
+  if (!nome) return "MINIGAME";
 
-    return nome
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/[_-]/g, " ")
-      .toUpperCase();
-  }
+  return NOMES_MINIGAMES[nome] || nome
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]/g, " ")
+    .toUpperCase();
+}
 
   criarBotaoSair() {
     
