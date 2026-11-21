@@ -1,93 +1,116 @@
+
 export const ACHIEVEMENT_DEFS = [
   {
     id: "primeiro-dia",
     name: "Primeiro Dia",
     description: "Completar a primeira partida.",
     icon: "☀️",
-    hint: "Conclua sua primeira partida para dar o pontapé inicial.",
+    hint: "Conclua sua primeira partida.",
     target: 1,
-    test: (summary) => Number(summary?.partidasTotaisApos ?? 0) >= 1,
+    test: (summary) =>
+      Number(summary?.partidasTotaisApos ?? 0) >= 1,
   },
   {
     id: "sobrevivente",
     name: "Sobrevivente",
-    description: "Alcançar pelo menos 500 pontos em uma partida.",
+    description: "Vencer 5 minigames em uma mesma partida.",
     icon: "🛡️",
-    hint: "Mantenha o bom desempenho e ultrapasse 500 pontos em um único jogo.",
-    target: 500,
-    test: (summary) => Number(summary?.score ?? 0) >= 500 && Number(summary?.vidasRestantes ?? 0) >= 1,
+    hint: "Consiga pelo menos 5 vitórias antes do fim da partida.",
+    target: 5,
+    test: (summary) =>
+      Number(summary?.fasesCompletas ?? 0) >= 5,
   },
   {
     id: "quase-um-milagre",
     name: "Quase um Milagre",
-    description: "Terminar uma partida com exatamente uma vida restante.",
+    description: "Vencer um minigame com apenas uma vida restante.",
     icon: "✨",
-    hint: "Chegue ao fim da partida com uma vida sobrando.",
+    hint: "Consiga vencer uma rodada quando estiver com apenas uma vida.",
     target: 1,
-    test: (summary) => Number(summary?.vidasRestantes ?? 0) === 1,
+    test: (summary) =>
+      summary?.venceuComUmaVida === true,
   },
   {
     id: "velocista",
     name: "Velocista",
-    description: "Completar um minigame em até 10 segundos.",
+    description: "Vencer um minigame em até 10 segundos.",
     icon: "⚡",
-    hint: "Faça um minigame em até 10 segundos para mostrar agilidade.",
+    hint: "Conclua uma rodada vitoriosa em até 10 segundos.",
     target: 10,
-    test: (summary) => Number(summary?.minigameMaisRapidoMs ?? Number.POSITIVE_INFINITY) <= 10000,
+    test: (summary) =>
+      summary?.minigameMaisRapidoMs != null &&
+      Number(summary.minigameMaisRapidoMs) <= 10000,
   },
   {
     id: "colecionador-de-pontos",
     name: "Colecionador de Pontos",
-    description: "Alcançar pelo menos 1.000 pontos em uma partida.",
+    description: "Vencer 15 minigames em uma mesma partida.",
     icon: "🏆",
-    hint: "Acumule 1.000 pontos ou mais em uma mesma partida.",
-    target: 1000,
-    test: (summary) => Number(summary?.score ?? 0) >= 1000,
+    hint: "Alcance 15 vitórias durante uma única partida.",
+    target: 15,
+    test: (summary) =>
+      Number(summary?.fasesCompletas ?? 0) >= 15,
   },
   {
     id: "persistente",
     name: "Persistente",
     description: "Completar 10 partidas.",
     icon: "🔁",
-    hint: "Volte ao jogo e alcance 10 partidas concluídas no total.",
+    hint: "Jogue e conclua 10 partidas no total.",
     target: 10,
-    test: (summary) => Number(summary?.partidasTotaisApos ?? 0) >= 10,
+    test: (summary) =>
+      Number(summary?.partidasTotaisApos ?? 0) >= 10,
   },
   {
     id: "veterano-do-ifc",
     name: "Veterano do IFC",
-    description: "Completar 5 fases.",
+    description: "Vencer 10 minigames em uma mesma partida.",
     icon: "🎓",
-    hint: "Passe por cinco fases para provar que você domina o desafio.",
-    target: 5,
-    test: (summary) => Number(summary?.fasesCompletas ?? 0) >= 5,
+    hint: "Alcance 10 vitórias durante uma única partida.",
+    target: 10,
+    test: (summary) =>
+      Number(summary?.fasesCompletas ?? 0) >= 10,
   },
   {
     id: "sem-medo",
     name: "Sem Medo",
-    description: "Completar 5 minigames consecutivos sem falhar.",
+    description: "Vencer 5 minigames consecutivos sem falhar.",
     icon: "😤",
-    hint: "Mantém a sequência e conclua 5 minigames seguidos sem errar.",
+    hint: "Mantenha uma sequência de 5 vitórias consecutivas.",
     target: 5,
-    test: (summary) => Number(summary?.sequenciaMaxima ?? 0) >= 5,
+    test: (summary) =>
+      Number(summary?.sequenciaMaxima ?? 0) >= 5,
   },
 ];
 
 export function normalizeAchievement(item) {
   if (!item || typeof item !== "object") return null;
 
-  const referencia = ACHIEVEMENT_DEFS.find((definicao) => definicao.id === item.id);
+  const referencia = ACHIEVEMENT_DEFS.find(
+    (definicao) => definicao.id === (item.id || item.codigo)
+  );
 
   return {
-    id: item.id,
-    name: item.name || referencia?.name || "Conquista",
-    description: item.description || referencia?.description || "Conquista desbloqueada.",
-    icon: item.icon || referencia?.icon || "🏆",
-    unlockedAt: item.unlockedAt || item.desbloqueado_em || item.unlocked_at || null,
+    id: item.id || item.codigo,
+    name: item.name || item.nome || referencia?.name || "Conquista",
+    description:
+      item.description ||
+      item.descricao ||
+      referencia?.description ||
+      "Conquista desbloqueada.",
+    icon: item.icon || item.icone || referencia?.icon || "🏆",
+    unlockedAt:
+      item.unlockedAt ||
+      item.desbloqueado_em ||
+      item.unlocked_at ||
+      null,
   };
 }
 
-export function getAchievementStorageKey({ userId = null, demoMode = false } = {}) {
+export function getAchievementStorageKey({
+  userId = null,
+  demoMode = false,
+} = {}) {
   if (demoMode || !userId) {
     return "jbifc_achievements_demo";
   }
@@ -95,7 +118,10 @@ export function getAchievementStorageKey({ userId = null, demoMode = false } = {
   return `jbifc_achievements_${String(userId)}`;
 }
 
-export function getPartidasTotaisStorageKey({ userId = null, demoMode = false } = {}) {
+export function getPartidasTotaisStorageKey({
+  userId = null,
+  demoMode = false,
+} = {}) {
   if (demoMode || !userId) {
     return "jbifc_partidas_totais_demo";
   }
@@ -103,7 +129,10 @@ export function getPartidasTotaisStorageKey({ userId = null, demoMode = false } 
   return `jbifc_partidas_totais_${String(userId)}`;
 }
 
-export function readAchievementList({ userId = null, demoMode = false } = []) {
+export function readAchievementList({
+  userId = null,
+  demoMode = false,
+} = {}) {
   if (typeof window === "undefined") return [];
 
   try {
@@ -119,45 +148,70 @@ export function readAchievementList({ userId = null, demoMode = false } = []) {
   }
 }
 
-export function writeAchievementList(items, { userId = null, demoMode = false } = {}) {
+export function writeAchievementList(
+  items,
+  { userId = null, demoMode = false } = {}
+) {
   if (typeof window === "undefined") return [];
 
   const key = getAchievementStorageKey({ userId, demoMode });
+
   const normalizados = Array.isArray(items)
     ? items.map(normalizeAchievement).filter(Boolean)
     : [];
 
   window.localStorage.setItem(key, JSON.stringify(normalizados));
+
   return normalizados;
 }
 
-export function readPartidasTotais({ userId = null, demoMode = false } = {}) {
+export function readPartidasTotais({
+  userId = null,
+  demoMode = false,
+} = {}) {
   if (typeof window === "undefined") return 0;
 
   try {
     const key = getPartidasTotaisStorageKey({ userId, demoMode });
     const valor = Number(window.localStorage.getItem(key) ?? 0);
-    return Number.isFinite(valor) && valor >= 0 ? valor : 0;
+
+    return Number.isFinite(valor) && valor >= 0
+      ? valor
+      : 0;
   } catch {
     return 0;
   }
 }
 
-export function writePartidasTotais(valor, { userId = null, demoMode = false } = {}) {
+export function writePartidasTotais(
+  valor,
+  { userId = null, demoMode = false } = {}
+) {
   if (typeof window === "undefined") return 0;
 
   const total = Math.max(0, Number(valor) || 0);
   const key = getPartidasTotaisStorageKey({ userId, demoMode });
+
   window.localStorage.setItem(key, String(total));
+
   return total;
 }
 
-export function evaluateAchievementUnlocks(summary, existingAchievements = []) {
-  const existentes = (Array.isArray(existingAchievements) ? existingAchievements : []).map((item) => item.id || item.codigo);
+export function evaluateAchievementUnlocks(
+  summary,
+  existingAchievements = []
+) {
+  const existentes = (
+    Array.isArray(existingAchievements)
+      ? existingAchievements
+      : []
+  ).map((item) => item.id || item.codigo);
+
   const novas = [];
 
   for (const item of ACHIEVEMENT_DEFS) {
     if (existentes.includes(item.id)) continue;
+
     if (item.test(summary)) {
       novas.push({
         id: item.id,
@@ -176,6 +230,7 @@ export function formatAchievementDate(dataIso) {
   if (!dataIso) return "";
 
   const data = new Date(dataIso);
+
   if (Number.isNaN(data.getTime())) return "";
 
   return data.toLocaleString("pt-BR", {
