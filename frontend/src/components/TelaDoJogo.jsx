@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Link } from "react-router";
-import Menuprint from "../assets/Menuprint.png";
+import Menuprint from "../assets/mosquito_logo.png";
 
 export default function TelaDoJogo() {
   const ref = useRef(null);
@@ -37,7 +37,7 @@ export default function TelaDoJogo() {
             alt="Menu inicial do jogo"
             fetchPriority="high"
             decoding="async"
-            className="block size-full object-cover [image-rendering:pixelated]"
+            className="block h-9/10 w-9/10 mx-auto my-auto pt-5 object-contain [image-rendering:pixelated]"
           />
           <div
             aria-hidden="true"

@@ -1,22 +1,26 @@
 import { useId, useRef, useState } from "react";
+import Ranking from "../assets/ranking.png";
+import Jogo from "../assets/jogo.png";
+import Instrucoes from "../assets/instrucoes.png";
 
 const passos = [
   {
     titulo: "Leia a instrução",
-    texto: "Cada minijogo começa com uma ordem curta, e é ela que diz o que fazer.",
-    imagem: "",
+    texto:
+      "Cada minijogo começa com uma ordem curta, e é ela que diz o que fazer.",
+    imagem: Instrucoes,
     alt: "Tela de instrução de um minijogo",
   },
   {
     titulo: "Acerte e some pontos",
     texto: "Cada acerto vale 1 ponto, e cada erro custa uma das 3 vidas.",
-    imagem: "",
+    imagem: Jogo,
     alt: "Tela de uma rodada com vidas e pontuação",
   },
   {
     titulo: "Entre no ranking",
     texto: "Quando as vidas acabam, a pontuação vai para o ranking.",
-    imagem: "",
+    imagem: Ranking,
     alt: "Tela do ranking de pontuações",
   },
 ];
@@ -67,7 +71,9 @@ export default function ComoFunciona() {
               tabIndex={selecionado ? 0 : -1}
               onClick={() => setAtivo(i)}
               className={`grid cursor-pointer grid-cols-[2.75rem_1fr] rounded-lg border p-4 text-left transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                selecionado ? "border-brand bg-brand-soft" : "border-line hover:bg-subtle"
+                selecionado
+                  ? "border-brand bg-brand-soft"
+                  : "border-line hover:bg-subtle"
               }`}
             >
               <span
@@ -106,7 +112,7 @@ export default function ComoFunciona() {
                 alt={passo.alt}
                 loading="lazy"
                 decoding="async"
-                className="size-full object-cover [image-rendering:pixelated]"
+                className="size-full object-contain [image-rendering:pixelated]"
               />
             ) : (
               <div className="flex size-full items-center justify-center text-sm text-white/60">

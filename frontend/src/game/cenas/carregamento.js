@@ -39,6 +39,7 @@ export default class Carregamento extends Phaser.Scene {
 
     this.load.svg("logo", "/game/JBIFC.svg");
     this.load.svg("IFC", "/game/IFC.svg");
+    this.load.image("professor", "game/renato.jpg")
 
     this.load.svg("menu-arvore", "/game/menu/arvore.svg");
     this.load.svg("menu-ceu", "/game/menu/ceu.svg");

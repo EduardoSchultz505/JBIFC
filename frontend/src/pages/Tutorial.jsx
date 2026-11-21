@@ -10,7 +10,7 @@ const regras = [
   "Cada erro custa uma vida.",
   "A cada 5 acertos seguidos, o tempo diminui.",
   "Quando as vidas acabam, a pontuação vai para o ranking.",
-  "Os controles funcionam somente por mouse ou toque.",
+  "Desbloqueie conquistas e seja o melhor do ranking.",
 ];
 
 export default function Tutorial() {

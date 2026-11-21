@@ -19,7 +19,7 @@ export default function Landing() {
               Projeto IFC · Desenvolvimento Web 2
             </p>
             <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tighter lg:text-5xl">
-              JBIFC: Mosquito's Average Day
+              JBIFC: Regular Mosquito's Day
             </h1>
             <p className="mt-4 mb-6 max-w-prose text-base leading-relaxed text-muted md:mt-6 md:mb-8 md:text-lg">
               Leia a instrução, aja rápido e entre no ranking.

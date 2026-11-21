@@ -7,6 +7,7 @@ const TITULOS = [
   "menu-titulo2",
   "menu-titulo3",
 ];
+const KONAMI = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; // ↑↑↓↓←→←→ B A
 
 export default class Menu extends Phaser.Scene {
   constructor() {
@@ -25,20 +26,22 @@ export default class Menu extends Phaser.Scene {
 
     this.criarCenario();
     this.criarMosquito();
+    this.criarProfessor()
     this.criarTitulos();
     this.criarPlacas();
 
     if (this.registry.get("introMenuVista")) {
-  this.mostrarMenuPronto();
-} else {
-  this.registry.set("introMenuVista", true);
-  this.animarMosquito();
-}
+      this.mostrarMenuPronto();
+    } else {
+      this.registry.set("introMenuVista", true);
+      this.animarMosquito();
+    }
+    this.configurarKonami()
   }
 
-  
-  
-  
+
+
+
 
   iniciarMusica() {
     let musicaMenu = this.registry.get("musicaMenu");
@@ -71,9 +74,9 @@ export default class Menu extends Phaser.Scene {
     }
   }
 
-  
-  
-  
+
+
+
 
   criarImagemTelaCheia(chave, depth) {
     return this.add
@@ -83,9 +86,9 @@ export default class Menu extends Phaser.Scene {
       .setDepth(depth);
   }
 
-  
-  
-  
+
+
+
 
   criarCenario() {
     this.criarImagemTelaCheia("menu-ceu", 0);
@@ -95,9 +98,9 @@ export default class Menu extends Phaser.Scene {
     this.criarImagemTelaCheia("menu-grama", 4);
   }
 
-  
-  
-  
+
+
+
 
   criarMosquito() {
     const eixoX = this.largura * 0.84;
@@ -126,18 +129,18 @@ export default class Menu extends Phaser.Scene {
     );
 
     this.tweens.add({
-  targets: this.containerMosquito,
-  x: this.largura * 0.85,
-  y: this.altura * 0.80,
-  angle: 355, 
-  duration: 1400,
-  ease: "Back.Out",
-  onComplete: () => {
-    this.containerMosquito.setAngle(-5); 
-    this.animarFlutuacaoMosquito();
-    this.animarTitulo(0);
-  },
-});
+      targets: this.containerMosquito,
+      x: this.largura * 0.85,
+      y: this.altura * 0.80,
+      angle: 355,
+      duration: 1400,
+      ease: "Back.Out",
+      onComplete: () => {
+        this.containerMosquito.setAngle(-5);
+        this.animarFlutuacaoMosquito();
+        this.animarTitulo(0);
+      },
+    });
   }
 
   animarFlutuacaoMosquito() {
@@ -163,9 +166,9 @@ export default class Menu extends Phaser.Scene {
     });
   }
 
-  
-  
-  
+
+
+
 
   criarTitulos() {
     this.titulos = [];
@@ -218,12 +221,12 @@ export default class Menu extends Phaser.Scene {
     });
   }
 
-  
-  
-  
+
+
+
 
   criarPlacas() {
-    
+
     this.imagemPlacas = this.add
       .image(0, this.altura, "menu-placa")
       .setOrigin(0, 0)
@@ -231,65 +234,65 @@ export default class Menu extends Phaser.Scene {
       .setDepth(7);
 
     const itens = [
-  {
-    texto: "JOGAR",
-    y: 337,
-    acao: () => {
-      this.pararMusicaMenu();
-      this.scene.start("Partida");
-    },
-  },
-  {
-    texto: "PRÁTICA",
-    y: 482,
-    acao: () => this.abrirCena("Pratica"),
-  },
-  {
-    texto: "OPÇÕES",
-    y: 627,
-    acao: () => this.scene.start("Opcoes"),
-  },
-];
+      {
+        texto: "JOGAR",
+        y: 337,
+        acao: () => {
+          this.pararMusicaMenu();
+          this.scene.start("Partida");
+        },
+      },
+      {
+        texto: "PRÁTICA",
+        y: 482,
+        acao: () => this.abrirCena("Pratica"),
+      },
+      {
+        texto: "OPÇÕES",
+        y: 627,
+        acao: () => this.scene.start("Opcoes"),
+      },
+    ];
 
     this.botoes = [];
 
     itens.forEach((item) => {
-  const rotulo = criarTexto(
-    this,
-    this.largura / 2 - 12,
-    item.y,
-    item.texto,
-    {
-      fontFamily: "PressStart2P",
-      fontSize: "30px",
-      color: "#ffffff",
-      stroke: "#3b2410",
-      strokeThickness: 5,
-    }
-  )
-    .setOrigin(0.5)
-    .setDepth(8)
-    .setAlpha(0);
+      const rotulo = criarTexto(
+        this,
+        this.largura / 2 - 12,
+        item.y,
+        item.texto,
+        {
+          fontFamily: "PressStart2P",
+          fontSize: "30px",
+          color: "#ffffff",
+          stroke: "#3b2410",
+          strokeThickness: 5,
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(8)
+        .setAlpha(0);
 
-  const zona = this.add
-    .zone(
-      this.largura / 2 - 12,
-      item.y,
-      260,
-      68
-    )
-    .setDepth(9);
+      const zona = this.add
+        .zone(
+          this.largura / 2 - 12,
+          item.y,
+          260,
+          68
+        )
+        .setDepth(9);
 
-  this.botoes.push({
-    rotulo,
-    zona,
-    acao: item.acao,
-  });
-});
+      this.botoes.push({
+        rotulo,
+        zona,
+        acao: item.acao,
+      });
+    });
   }
 
   animarPlaca() {
-    
+
     this.tweens.add({
       targets: this.imagemPlacas,
       y: 0,
@@ -362,32 +365,61 @@ export default class Menu extends Phaser.Scene {
     });
   }
 
-  
-mostrarMenuPronto() {
-  this.containerMosquito.setPosition(
-    this.largura * 0.85,
-    this.altura * 0.80
-  );
-  this.animarFlutuacaoMosquito();
 
-  this.titulos.forEach((titulo, indice) => {
-    titulo.setPosition(0, 0).setAlpha(1);
-    this.animarFlutuacaoTitulo(titulo, indice);
-  });
+  mostrarMenuPronto() {
+    this.containerMosquito.setPosition(
+      this.largura * 0.85,
+      this.altura * 0.80
+    );
+    this.animarFlutuacaoMosquito();
 
-  this.imagemPlacas.setY(0);
+    this.titulos.forEach((titulo, indice) => {
+      titulo.setPosition(0, 0).setAlpha(1);
+      this.animarFlutuacaoTitulo(titulo, indice);
+    });
 
-  this.botoes.forEach((item) => {
-    item.rotulo.setAlpha(1);
-    this.configurarInteracao(item);
-  });
+    this.imagemPlacas.setY(0);
 
-  this.menuIniciado = true;
-}
+    this.botoes.forEach((item) => {
+      item.rotulo.setAlpha(1);
+      this.configurarInteracao(item);
+    });
 
-  
-  
-  
+    this.menuIniciado = true;
+  }
+
+  // Chame no fim de criarMosquito(), depois de containerMosquito.add(...)
+  criarProfessor() {
+    this.professor = this.add.image(0, 0, "professor");
+    // altura da foto = 30% da tela; ajuste ao gosto
+    this.professor.setScale((this.altura * 0.3) / this.professor.height);
+    this.containerMosquito.add(this.professor);
+    this.aplicarProfessor(this.registry.get("eggProfessor") === true);
+  }
+
+  aplicarProfessor(ativo) {
+    this.professor.setVisible(ativo);
+    this.mosquito.setVisible(!ativo);
+    this.registry.set("eggProfessor", ativo); // sobrevive ao voltar para o menu
+  }
+
+  configurarKonami() {
+    const combo = this.input.keyboard.createCombo(KONAMI, { resetOnMatch: true });
+
+    const aoCompletar = () => {
+      // só depois da intro, para não bagunçar a animação de entrada
+      if (this.menuIniciado) this.aplicarProfessor(!this.professor.visible);
+    };
+
+    this.input.keyboard.on("keycombomatch", aoCompletar);
+
+    this.events.once("shutdown", () => {
+      this.input.keyboard.off("keycombomatch", aoCompletar);
+      combo.destroy();
+    });
+  }
+
+
 
   abrirCena(nome) {
     if (this.scene.manager.keys[nome]) {
