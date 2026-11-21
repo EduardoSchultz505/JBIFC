@@ -15,7 +15,7 @@ export const COR = {
 
 const TEMPOS = {
   entrada: 350,
-  leitura: 1800,
+  leitura: 2800,
   saida: 350,
 };
 
@@ -47,7 +47,7 @@ class CenaInstrucao extends Phaser.Scene {
       wordWrap: { width: width * 0.85 },
     });
 
-    
+
     this.painel = this.add
       .rectangle(0, 0, width, height, COR_PAINEL, OPACIDADE_PAINEL)
       .setOrigin(0, 0)
@@ -74,7 +74,7 @@ class CenaInstrucao extends Phaser.Scene {
         this,
         width / 2,
         height * 0.68,
-        (minigame.controles ?? []).join("   "),
+        (minigame.controles ?? []).join("\n"),
         estilo(32, COR.amarelo)
       ),
     ];
@@ -83,10 +83,10 @@ class CenaInstrucao extends Phaser.Scene {
       texto.setOrigin(0.5).setAlpha(0);
     });
 
-    
+
     cenaPai.events.once("shutdown", this.cancelar, this);
 
-    
+
     this.tweens.add({
       targets: this.painel,
       scaleX: 1,
@@ -112,7 +112,7 @@ class CenaInstrucao extends Phaser.Scene {
       duration: 150,
     });
 
-    
+
     this.tweens.add({
       targets: this.painel,
       scaleX: 0,
@@ -133,7 +133,7 @@ class CenaInstrucao extends Phaser.Scene {
 
     this.scene.stop();
 
-    
+
     cenaPai.scene.resume();
 
     aoFinalizar();
@@ -141,7 +141,7 @@ class CenaInstrucao extends Phaser.Scene {
 }
 
 export function mostrarInstrucao(cena, minigame, aoFinalizar) {
-  
+
   if (!cena.scene.get(CHAVE)) {
     cena.scene.add(CHAVE, CenaInstrucao, false);
   }

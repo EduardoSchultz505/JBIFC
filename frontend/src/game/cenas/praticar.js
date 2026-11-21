@@ -4,6 +4,7 @@ import {
   aplicarQualidade,
   criarTexto,
 } from "../sistema/qualidadeGraficos";
+import { criarFundoMenu } from "../sistema/fundoMenu";
 
 const MINIGAMES = Object.values(
   import.meta.glob(["../minigames/*.js", "!../minigames/_*.js"], {
@@ -57,9 +58,10 @@ export default class Pratica extends Phaser.Scene {
   }
 
   mostrarSelecao() {
-    this.limparTela();
+  this.limparTela();
+  criarFundoMenu(this);
 
-    this.estado = "selecao";
+  this.estado = "selecao";
 
     const { width, height } = this.scale;
 

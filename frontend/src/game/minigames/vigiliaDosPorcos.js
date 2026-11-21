@@ -2,7 +2,13 @@
 import Phaser from "phaser";
 
 export default class VigiliaDosPorcos {
-  instrucao = "ILUMINE E ENCONTRE AS PESSOAS";
+  titulo = "PARADO AÍ!";
+  descricao = "Como um guarda noturno, impeça que os alunos causem confusão durante a noite. Fique atento e não deixe ninguém aprontar!";
+
+  controles = [
+    "MOUSE: INTERAGIR",
+  ];
+
   duracao = 8;
 
   constructor(scene) {

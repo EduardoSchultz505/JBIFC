@@ -1,11 +1,11 @@
 
 import Phaser from "phaser";
-
 import {
   obterNivelQualidade,
   salvarNivelQualidade,
   criarTexto,
 } from "../sistema/qualidadeGraficos";
+import { criarFundoMenu } from "../sistema/fundoMenu";
 
 const FONTE = "PressStart2P";
 
@@ -27,6 +27,7 @@ export default class Opcoes extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor(COR.fundo);
+criarFundoMenu(this);
 
     this.qualidade = obterNivelQualidade();
     this.qualidadeInicial = this.qualidade;
