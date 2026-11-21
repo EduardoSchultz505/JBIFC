@@ -1,4 +1,3 @@
-
 import Phaser from "phaser";
 
 const TELA = { x: 368, y: 246, w: 408, h: 304 };
@@ -69,9 +68,6 @@ export default class JogueSemSerPego {
   aplicarDificuldade(nivel) {
     this.ritmo = Math.min(1.8, 1 / 0.9 ** nivel);
 
-    console.log(
-      `[Jogue Sem Ser Pego] Nível: ${nivel} | Ritmo: ${this.ritmo.toFixed(2)}x`
-    );
   }
 
   iniciar() {

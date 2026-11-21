@@ -3,9 +3,12 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import Container from "../components/Container";
+import { useAuth } from "../auth/useAuth";
 
 const VAZIO = { usuario: "", senha: "", confirmar: "" };
+// Login aceita contas antigas; cadastro novo só aceita letras latinas (igual ao servidor)
 const USUARIO_VALIDO = /^[\p{L}\p{N}_-]{3,20}$/u;
+const USUARIO_NOVO = /^[\p{Script=Latin}0-9_-]{3,20}$/u;
 const MODOS = [
   ["login", "Entrar"],
   ["cadastro", "Criar conta"],
@@ -13,13 +16,20 @@ const MODOS = [
 
 function validar(modo, v) {
   const erros = {};
-  if (!USUARIO_VALIDO.test(v.usuario.trim())) {
-    erros.usuario = "Use de 3 a 20 letras, números, _ ou -.";
+  const regra = modo === "cadastro" ? USUARIO_NOVO : USUARIO_VALIDO;
+  if (!regra.test(v.usuario.trim())) {
+    erros.usuario = modo === "cadastro"
+      ? "Use de 3 a 20 letras latinas, números, _ ou -."
+      : "Use de 3 a 20 letras, números, _ ou -.";
   }
   if (!v.senha) {
     erros.senha = "Digite a senha.";
   } else if (modo === "cadastro" && v.senha.length < 8) {
     erros.senha = "A senha precisa ter pelo menos 8 caracteres.";
+  } else if (modo === "cadastro" && new TextEncoder().encode(v.senha).length > 72) {
+    erros.senha = "A senha pode ter no máximo 72 bytes.";
+  } else if (modo === "cadastro" && v.senha.toLowerCase() === v.usuario.trim().toLowerCase()) {
+    erros.senha = "A senha não pode ser igual ao nome de usuário.";
   }
   if (modo === "cadastro" && v.confirmar !== v.senha) {
     erros.confirmar = "As senhas não são iguais.";
@@ -51,6 +61,7 @@ const classeInput = (erro) =>
 
 export default function Login() {
   const navigate = useNavigate();
+  const { entrar } = useAuth();
   const id = useId();
   const abas = useRef([]);
   const [modo, setModo] = useState("login");
@@ -108,9 +119,10 @@ export default function Login() {
       const corpo = { usuario: valores.usuario.trim(), senha: valores.senha };
 
       const resposta = await axios.post(`/api/${rota}`, corpo, {
+        withCredentials: true,
         timeout: 70000,
       });
-      localStorage.setItem("jbifc_token", resposta.data.token);
+      entrar(resposta.data);
       navigate("/jogar");
     } catch (err) {
       if (err.response?.data?.erro) {

@@ -1,4 +1,3 @@
-
 import Phaser from "phaser";
 
 export default class VigiliaDosPorcos {
@@ -78,8 +77,6 @@ export default class VigiliaDosPorcos {
         achado: false,
       };
     });
-
-    console.log("Pessoas sorteadas:", this.pessoasEscolhidas);
 
     // Camada escura.
     this.escuro = this.scene.add
@@ -287,12 +284,9 @@ export default class VigiliaDosPorcos {
       .setDepth(2.1)
       .clearTint();
 
-    console.log(`Pessoa ${ladrao.numero} encontrada!`);
-
     // Verifica se todas foram encontradas.
     if (this.ladroes.every((p) => p.achado)) {
       this.estado = "ganhou";
-      console.log("Todas as pessoas foram encontradas!");
     }
   }
 

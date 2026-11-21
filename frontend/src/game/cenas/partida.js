@@ -1,4 +1,3 @@
-
 import Phaser from "phaser";
 import { COR, FONTE, mostrarInstrucao } from "./instrucao.js";
 import Pausa from "./pausa.js";
@@ -123,6 +122,9 @@ export default class Partida extends Phaser.Scene {
 
       return;
     }
+
+    // Avisa o React para registrar o início da partida no servidor
+    this.game.events.emit("inicio-de-partida");
 
     this.proximaRodada();
   }
@@ -354,12 +356,6 @@ export default class Partida extends Phaser.Scene {
             : "ACERTOU!"
         )
         .setColor(COR.verde);
-
-      if (subiuDeNivel) {
-        console.info(
-          `[Dificuldade] Novo nível: ${nivelAtual} | Pontos: ${this.pontos}`
-        );
-      }
     } else {
       // Perdeu: reduz uma vida e zera a sequência atual
       this.vidas -= 1;
@@ -406,8 +402,6 @@ export default class Partida extends Phaser.Scene {
       minigameMaisRapidoMs: this.minigameMaisRapidoMs,
       venceuComUmaVida: this.venceuComUmaVida,
     };
-
-    console.info("[GameOver] Resumo da partida:", resumoPartida);
 
     this.game.events.emit("fim-de-partida", resumoPartida);
   }
