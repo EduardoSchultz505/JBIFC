@@ -178,7 +178,7 @@ export default class JogueSemSerPego {
 
     this.profY = height - 10;
 
-    // Aviso visual para alertas do jogo.
+    
     this.aviso = add
       .text(width / 2, 70, "", {
         fontFamily: "Arial",
@@ -201,7 +201,7 @@ export default class JogueSemSerPego {
         .setDepth(20);
     }
 
-    // Controles do jogo.
+    
     this.aoPular = () => this.pular();
     this.aoAba = () => this.alternarAba();
 

@@ -39,8 +39,8 @@ if (JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// Login aceita qualquer letra (contas antigas). Cadastro novo só aceita letras latinas,
-// o que bloqueia homóglifos de outros alfabetos (ex.: "а" cirílico no lugar de "a").
+
+
 const USUARIO_VALIDO = /^[\p{L}\p{N}_-]{3,20}$/u;
 const USUARIO_NOVO = /^[\p{Script=Latin}0-9_-]{3,20}$/u;
 const NOMES_RESERVADOS = new Set([
@@ -48,13 +48,13 @@ const NOMES_RESERVADOS = new Set([
   "moderador", "professor", "prof", "jbifc", "ifc", "mosquito",
 ]);
 const BCRYPT_CUSTO = 12;
-// Prova de tempo: uma partida termina com 3 derrotas e cada rodada leva, no mínimo,
-// 3,5 s de instrução (instrucao.js) + 0,9 s de feedback (partida.js). Usamos 4 s por folga.
+
+
 const VIDAS_INICIAIS = 3;
 const SEGUNDOS_MINIMOS_POR_RODADA = 4;
 const DURACAO_MAXIMA_PARTIDA_S = 6 * 60 * 60;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PONTOS_POR_NIVEL = 5; // mesmo valor de PONTOS_PARA_AUMENTAR_NIVEL em partida.js
+const PONTOS_POR_NIVEL = 5; 
 const INT_MAX = 2147483647;
 const LIMITE_RANKING_MAX = 100;
 
@@ -69,7 +69,7 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-// Cabeçalhos de segurança da API (sem dependência extra)
+
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -148,7 +148,7 @@ async function supabaseFetch(table, { method = "GET", query = "", body = null, u
 
   try {
     const headers = buildSupabaseHeaders({ useServiceRole });
-    // prefer: undefined mantém o padrão, null remove o cabeçalho, string substitui
+    
     if (method === "GET" || prefer === null) delete headers.Prefer;
     else if (prefer) headers.Prefer = prefer;
 
@@ -186,9 +186,9 @@ async function supabaseFetch(table, { method = "GET", query = "", body = null, u
 app.use(cors({ origin: ORIGENS_PERMITIDAS, methods: ["GET", "POST"] }));
 app.use(express.json({ limit: "10kb" }));
 
-// CSRF: pedidos que alteram dados só valem se vierem do próprio site. Navegadores modernos
-// enviam Sec-Fetch-Site; os mais antigos caem na checagem do Origin. Clientes sem navegador
-// (curl, testes) não mandam nenhum dos dois e não são alvo desse tipo de ataque.
+
+
+
 app.use((req, res, next) => {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
 
@@ -202,7 +202,7 @@ app.use((req, res, next) => {
   try {
     hostOrigem = new URL(origem).host;
   } catch {
-    // origem ausente ou "null"
+    
   }
   if (origem && (hostOrigem === req.get("host") || ORIGENS_PERMITIDAS.includes(origem))) {
     return next();
@@ -214,9 +214,9 @@ app.use((req, res, next) => {
 
 const mensagemLimite = (erro) => ({ erro });
 
-// Limitadores sensíveis guardam a contagem no Supabase (a memória não é compartilhada
-// entre as instâncias da Vercel). O limite geral continua em memória, para não custar
-// uma ida ao banco em toda requisição.
+
+
+
 const limitadorComBanco = (prefixo, opcoes) =>
   rateLimit({
     ...opcoes,
@@ -245,7 +245,7 @@ const limiteLogin = limitadorComBanco("login", {
   message: mensagemLimite("Muitas tentativas de login. Tente de novo em alguns minutos."),
 });
 
-// Por conta: segura força bruta distribuída (vários IPs contra o mesmo usuário)
+
 const limiteLoginConta = limitadorComBanco("login-conta", {
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -264,7 +264,7 @@ const limiteCadastro = limitadorComBanco("cadastro", {
   message: mensagemLimite("Muitos cadastros deste endereço. Tente mais tarde."),
 });
 
-// Perfil público: limite menor para dificultar a varredura de nomes
+
 const limitePerfil = rateLimit({
   windowMs: 60 * 1000,
   limit: 30,
@@ -273,7 +273,7 @@ const limitePerfil = rateLimit({
   message: mensagemLimite("Muitas consultas de perfil. Aguarde um instante."),
 });
 
-// Envio de pontuação: limite por usuário (não por IP), só roda depois de autenticar
+
 const chaveUsuario = (req) => `u:${req.usuario?.id ?? "anon"}`;
 
 const limitePontuacaoCurto = limitadorComBanco("pontuacao-curto", {
@@ -316,7 +316,7 @@ app.get("/api/health", async (_req, res) => {
 });
 
 
-// Usada só no cadastro. O login mantém a regra antiga para não travar contas existentes.
+
 function validarUsuarioESenha(usuario, senha) {
   if (typeof usuario !== "string" || !USUARIO_NOVO.test(usuario.trim())) {
     return "Use de 3 a 20 letras latinas, números, _ ou -.";
@@ -365,8 +365,8 @@ function criarToken(id, usuario) {
   return jwt.sign({ id, usuario }, JWT_SECRET, { algorithm: "HS256", expiresIn: JWT_EXPIRACAO });
 }
 
-// Sessão em cookie httpOnly: o JavaScript da página (e qualquer XSS) não consegue ler o token.
-// Path /api: o navegador só envia o cookie para a API.
+
+
 const EM_PRODUCAO = process.env.NODE_ENV === "production";
 const COOKIE_SESSAO = "jbifc_token";
 const OPCOES_COOKIE = { httpOnly: true, secure: EM_PRODUCAO, sameSite: "lax", path: "/api" };
@@ -410,7 +410,7 @@ function autenticar(req, res, next) {
 }
 
 
-// Soma 1 no próprio banco (função SQL), sem ler e gravar em duas etapas
+
 async function incrementarPartidas(jogadorId) {
   const total = await supabaseFetch("rpc/incrementar_partidas", {
     method: "POST",
@@ -434,7 +434,7 @@ async function registrarPartida(jogadorId, resumo) {
   if (novas.length === 0) return [];
 
   const agora = new Date().toISOString();
-  // ignore-duplicates: duas requisições simultâneas não derrubam o INSERT inteiro
+  
   const inseridas = await supabaseFetch("conquistas_jogador", {
     method: "POST",
     query: "on_conflict=jogador_id,codigo",
@@ -639,8 +639,8 @@ app.get("/api/ranking", async (req, res) => {
   }
 });
 
-// Registra o início de uma partida. O relógio é do servidor e cada jogador tem uma só
-// partida em andamento: iniciar outra substitui a anterior.
+
+
 app.post("/api/partida", autenticar, limitePartidaNova, async (req, res) => {
   const id = randomUUID();
   try {
@@ -658,7 +658,7 @@ app.post("/api/partida", autenticar, limitePartidaNova, async (req, res) => {
 });
 
 app.post("/api/ranking", autenticar, limitePontuacaoCurto, limitePontuacaoHora, async (req, res) => {
-  // O nível vem da pontuação, nunca do cliente (é critério de desempate do ranking)
+  
   const { pontuacao, resumo, partida } = req.body || {};
 
   if (!Number.isInteger(pontuacao) || pontuacao < 0 || pontuacao > INT_MAX) {
@@ -687,8 +687,8 @@ app.post("/api/ranking", autenticar, limitePontuacaoCurto, limitePontuacaoHora, 
       return res.status(401).json({ erro: "Conta não encontrada. Entre novamente." });
     }
 
-    // Uso único: a partida é consumida antes de qualquer outra checagem, então não dá
-    // para testar valores repetidamente com o mesmo identificador.
+    
+    
     const consumida = await supabaseFetch("partidas_em_andamento", {
       method: "PATCH",
       query: `jogador_id=eq.${jogador.id}&id=eq.${partida}&usada=eq.false`,
@@ -710,7 +710,7 @@ app.post("/api/ranking", autenticar, limitePontuacaoCurto, limitePontuacaoHora, 
     const duracaoS = (Date.now() - Date.parse(consumida[0].iniciada_em)) / 1000;
     const minimoS = (pontuacao + VIDAS_INICIAIS) * SEGUNDOS_MINIMOS_POR_RODADA;
     if (duracaoS > DURACAO_MAXIMA_PARTIDA_S || duracaoS < minimoS) {
-      // Recusada: apaga a partida para não ser confundida com uma já registrada
+      
       await supabaseFetch("partidas_em_andamento", {
         method: "DELETE",
         query: `jogador_id=eq.${jogador.id}&id=eq.${partida}`,
@@ -763,7 +763,7 @@ app.post("/api/ranking", autenticar, limitePontuacaoCurto, limitePontuacaoHora, 
     });
   } catch (err) {
     console.error("[Ranking] Erro ao salvar pontuação:", err);
-    // Falha de infraestrutura: devolve a partida para o jogador poder tentar de novo
+    
     if (partidaConsumida) {
       try {
         await supabaseFetch("partidas_em_andamento", {
@@ -772,7 +772,7 @@ app.post("/api/ranking", autenticar, limitePontuacaoCurto, limitePontuacaoHora, 
           body: { usada: false },
         });
       } catch {
-        // sem resposta do banco: o jogador precisará jogar outra partida
+        
       }
     }
     res.status(500).json({ erro: "Erro ao salvar no ranking." });

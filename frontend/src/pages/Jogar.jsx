@@ -37,11 +37,11 @@ export default function Jogar() {
   const jogadorIdRef = useRef(null);
   const usuarioRef = useRef("");
   const resumoRef = useRef(null);
-  const partidaIdRef = useRef(null); // partida registrada no servidor ao iniciar
+  const partidaIdRef = useRef(null); 
 
   const logado = Boolean(usuario);
 
-  // Os refs deixam o jogo (fora do ciclo do React) enxergar quem está logado
+  
   useEffect(() => {
     usuarioRef.current = usuario ?? "";
     jogadorIdRef.current = jogadorId ?? null;
@@ -135,7 +135,7 @@ export default function Jogar() {
         return;
       }
 
-      // Resposta perdida depois de o servidor já ter salvo: não é erro
+      
       if (erro.response?.data?.codigo === "partida_ja_registrada") {
         pontuacaoSalvaRef.current = true;
         setEstadoSalvamento("salvo");
@@ -144,7 +144,7 @@ export default function Jogar() {
       }
 
       setEstadoSalvamento("erro");
-      // O servidor explica limites e partidas recusadas; o resto vira mensagem padrão
+      
       const status = erro.response?.status;
       setMensagem(
         [400, 409, 429].includes(status) && erro.response?.data?.erro
@@ -210,7 +210,7 @@ export default function Jogar() {
           setConquistasNovas([]);
           setGameOver(pontuacaoExata);
 
-          // Somente jogadores autenticados salvam dados.
+          
           if (jogadorIdRef.current) {
             salvarPontuacao(pontuacaoExata);
           }
@@ -218,7 +218,7 @@ export default function Jogar() {
 
         jogo.events.on("fim-de-partida", aoTerminarPartida);
 
-        // Cada partida nasce no servidor, que guarda o relógio e a usa uma única vez
+        
         const aoIniciarPartida = async () => {
           partidaIdRef.current = null;
           if (cancelado || !jogadorIdRef.current) return;

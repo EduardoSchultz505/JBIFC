@@ -10,9 +10,6 @@ const comTempo = (promessa) =>
     ),
   ]);
 
-// Store do express-rate-limit guardada no Supabase. Em serverless cada instância tem a
-// sua memória, então a contagem precisa ficar num lugar compartilhado.
-// Se o banco falhar, cai para uma contagem local (limite fraco, mas a API não para).
 export default class BancoRateLimitStore {
   constructor({ prefixo, chamarRpc }) {
     this.prefixo = prefixo;
@@ -25,7 +22,7 @@ export default class BancoRateLimitStore {
     this.windowMs = opcoes.windowMs;
   }
 
-  // O IP vira hash para não ficar gravado em texto no banco
+  
   chave(chaveBruta) {
     const hash = createHash("sha256").update(String(chaveBruta)).digest("hex").slice(0, 32);
     return `${this.prefixo}:${hash}`;

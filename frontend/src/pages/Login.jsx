@@ -6,7 +6,7 @@ import Container from "../components/Container";
 import { useAuth } from "../auth/useAuth";
 
 const VAZIO = { usuario: "", senha: "", confirmar: "" };
-// Login aceita contas antigas; cadastro novo só aceita letras latinas (igual ao servidor)
+
 const USUARIO_VALIDO = /^[\p{L}\p{N}_-]{3,20}$/u;
 const USUARIO_NOVO = /^[\p{Script=Latin}0-9_-]{3,20}$/u;
 const MODOS = [
