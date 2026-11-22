@@ -70,6 +70,23 @@ alter table public.jogadores enable row level security;
 alter table public.ranking enable row level security;
 alter table public.conquistas_jogador enable row level security;
 
+-- Uma partida em andamento por jogador (relógio e uso único controlados pelo servidor)
+create table if not exists public.partidas_em_andamento (
+  jogador_id integer primary key references public.jogadores(id) on delete cascade,
+  id uuid not null,
+  iniciada_em timestamptz not null default now(),
+  usada boolean not null default false
+);
+alter table public.partidas_em_andamento enable row level security;
+
+-- Contadores do rate limit (compartilhados entre as instâncias da Vercel)
+create table if not exists public.rate_limits (
+  chave text primary key,
+  contagem integer not null,
+  expira_em timestamptz not null
+);
+alter table public.rate_limits enable row level security;
+
 drop policy if exists "ranking_leitura_publica" on public.ranking;
 drop policy if exists "ranking_insercao_propria" on public.ranking;
 drop policy if exists "ranking_atualizacao_propria" on public.ranking;
@@ -80,7 +97,65 @@ drop policy if exists "conquistas_insercao_publica" on public.conquistas_jogador
 drop policy if exists "conquistas_atualizacao_propria" on public.conquistas_jogador;
 
 
-revoke all on public.jogadores, public.ranking, public.conquistas_jogador, public.ranking_posicoes
+revoke all on public.jogadores, public.ranking, public.conquistas_jogador, public.ranking_posicoes, public.partidas_em_andamento, public.rate_limits
   from anon, authenticated;
+
+-- Soma atômica usada pelo backend (evita perder contagem em requisições simultâneas)
+create or replace function public.incrementar_partidas(p_jogador integer)
+returns integer
+language sql
+as $$
+  update public.jogadores
+     set partidas_totais = partidas_totais + 1
+   where id = p_jogador
+  returning partidas_totais;
+$$;
+
+revoke all on function public.incrementar_partidas(integer) from public, anon, authenticated;
+grant execute on function public.incrementar_partidas(integer) to service_role;
+
+create or replace function public.rate_limit_hit(p_chave text, p_janela_ms integer)
+returns table (total integer, reseta_em timestamptz)
+language plpgsql
+as $$
+begin
+  -- limpeza ocasional de contadores vencidos
+  if random() < 0.01 then
+    delete from public.rate_limits where expira_em < now() - interval '1 hour';
+  end if;
+
+  insert into public.rate_limits as r (chave, contagem, expira_em)
+  values (p_chave, 1, now() + make_interval(secs => p_janela_ms / 1000.0))
+  on conflict (chave) do update
+    set contagem = case when r.expira_em <= now() then 1 else r.contagem + 1 end,
+        expira_em = case when r.expira_em <= now()
+                         then now() + make_interval(secs => p_janela_ms / 1000.0)
+                         else r.expira_em end
+  returning r.contagem, r.expira_em into total, reseta_em;
+
+  return next;
+end;
+$$;
+
+create or replace function public.rate_limit_undo(p_chave text)
+returns void
+language sql
+as $$
+  update public.rate_limits set contagem = greatest(contagem - 1, 0) where chave = p_chave;
+$$;
+
+create or replace function public.rate_limit_reset(p_chave text)
+returns void
+language sql
+as $$
+  delete from public.rate_limits where chave = p_chave;
+$$;
+
+revoke all on function public.rate_limit_hit(text, integer) from public, anon, authenticated;
+revoke all on function public.rate_limit_undo(text) from public, anon, authenticated;
+revoke all on function public.rate_limit_reset(text) from public, anon, authenticated;
+grant execute on function public.rate_limit_hit(text, integer) to service_role;
+grant execute on function public.rate_limit_undo(text) to service_role;
+grant execute on function public.rate_limit_reset(text) to service_role;
 
 notify pgrst, 'reload schema';

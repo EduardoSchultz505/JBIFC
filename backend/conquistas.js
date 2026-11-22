@@ -1,4 +1,3 @@
-
 const DEFS = [
   {
     id: "primeiro-dia",
@@ -103,6 +102,13 @@ export function validarResumo(resumo, pontuacao) {
     ) {
       return null;
     }
+  }
+
+  if (vidasRestantes !== 0) return null;
+  if (fasesCompletas !== pontuacao) return null;
+  if (sequenciaMaxima > fasesCompletas) return null;
+  if (fasesCompletas === 0 && (minigameMaisRapidoMs !== null || venceuComUmaVida)) {
+    return null;
   }
 
   return {

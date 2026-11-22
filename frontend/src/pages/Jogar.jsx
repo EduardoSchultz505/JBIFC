@@ -1,10 +1,10 @@
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize, CirclePlay, Monitor } from "lucide-react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router";
 import { criarJogo } from "../game/loadGame";
 import Container from "../components/Container";
+import { useAuth } from "../auth/useAuth";
 
 export default function Jogar() {
   const [iniciado, setIniciado] = useState(false);
@@ -12,14 +12,16 @@ export default function Jogar() {
   const [gameOver, setGameOver] = useState(null);
   const [estadoSalvamento, setEstadoSalvamento] = useState("idle");
   const [mensagem, setMensagem] = useState("");
-  const [token, setToken] = useState(() =>
-    localStorage.getItem("jbifc_token"),
-  );
-  const [usuario, setUsuario] = useState("");
-  const [authCarregando, setAuthCarregando] = useState(() =>
-    Boolean(localStorage.getItem("jbifc_token")),
-  );
-  const [authErro, setAuthErro] = useState("");
+  const {
+    usuario,
+    id: jogadorId,
+    carregando: authCarregando,
+    erro: authFalhou,
+    expirar,
+  } = useAuth();
+  const authErro = authFalhou
+    ? "Não foi possível verificar seu login agora. Recarregue a página para tentar de novo."
+    : "";
   const [conquistasNovas, setConquistasNovas] = useState([]);
 
   const [mobile] = useState(
@@ -34,45 +36,16 @@ export default function Jogar() {
   const pontuacaoSalvaRef = useRef(false);
   const jogadorIdRef = useRef(null);
   const usuarioRef = useRef("");
-  const tokenRef = useRef(token);
   const resumoRef = useRef(null);
+  const partidaIdRef = useRef(null); 
 
-  const logado = Boolean(token && usuario);
+  const logado = Boolean(usuario);
 
+  
   useEffect(() => {
-    if (!token) {
-      setAuthCarregando(false);
-      return;
-    }
-
-    axios
-      .get("/api/usuario", {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 70000,
-      })
-      .then(({ data }) => {
-        setUsuario(data.usuario);
-        usuarioRef.current = data.usuario;
-        jogadorIdRef.current = data.id;
-        tokenRef.current = token;
-      })
-      .catch((erro) => {
-        if (erro.response?.status !== 401) {
-          setAuthErro(
-            "Não foi possível verificar seu login agora. Recarregue a página para tentar de novo.",
-          );
-          return;
-        }
-
-        localStorage.removeItem("jbifc_token");
-        setToken(null);
-        setUsuario("");
-        usuarioRef.current = "";
-        jogadorIdRef.current = null;
-        tokenRef.current = null;
-      })
-      .finally(() => setAuthCarregando(false));
-  }, [token]);
+    usuarioRef.current = usuario ?? "";
+    jogadorIdRef.current = jogadorId ?? null;
+  }, [usuario, jogadorId]);
 
   const salvarPontuacao = useCallback(async (pontuacaoCapturada) => {
     if (
@@ -82,11 +55,7 @@ export default function Jogar() {
       return;
     }
 
-    if (
-      !tokenRef.current ||
-      !jogadorIdRef.current ||
-      !usuarioRef.current
-    ) {
+    if (!jogadorIdRef.current || !usuarioRef.current) {
       return;
     }
 
@@ -104,6 +73,12 @@ export default function Jogar() {
       return;
     }
 
+    if (!partidaIdRef.current) {
+      setEstadoSalvamento("erro");
+      setMensagem("Esta partida não foi registrada no servidor. Jogue novamente para salvar.");
+      return;
+    }
+
     salvamentoEmAndamentoRef.current = true;
     setEstadoSalvamento("salvando");
     setMensagem("");
@@ -111,26 +86,14 @@ export default function Jogar() {
     const dados = {
       pontuacao: pontuacaoFinal,
       resumo: resumoRef.current,
+      partida: partidaIdRef.current,
     };
-
-    console.info("[Ranking] Dados enviados ao backend:", {
-      nome: usuarioRef.current,
-      dados,
-    });
 
     try {
       const resposta = await axios.post("/api/ranking", dados, {
-        headers: {
-          Authorization: `Bearer ${tokenRef.current}`,
-        },
+        withCredentials: true,
         timeout: 70000,
       });
-
-      console.info(
-        "[Ranking] Resposta do backend:",
-        resposta.status,
-        resposta.data,
-      );
 
       pontuacaoSalvaRef.current = true;
       setEstadoSalvamento("salvo");
@@ -165,14 +128,33 @@ export default function Jogar() {
         mensagem: erro.message,
       });
 
+      if (erro.response?.status === 401) {
+        expirar();
+        setEstadoSalvamento("erro");
+        setMensagem("Sua sessão expirou. Entre novamente para salvar.");
+        return;
+      }
+
+      
+      if (erro.response?.data?.codigo === "partida_ja_registrada") {
+        pontuacaoSalvaRef.current = true;
+        setEstadoSalvamento("salvo");
+        setMensagem("Esta partida já tinha sido registrada.");
+        return;
+      }
+
       setEstadoSalvamento("erro");
+      
+      const status = erro.response?.status;
       setMensagem(
-        "Não foi possível salvar a pontuação. Tente novamente.",
+        [400, 409, 429].includes(status) && erro.response?.data?.erro
+          ? erro.response.data.erro
+          : "Não foi possível salvar a pontuação. Tente novamente.",
       );
     } finally {
       salvamentoEmAndamentoRef.current = false;
     }
-  }, []);
+  }, [expirar]);
 
   useEffect(() => {
     if (!iniciado || !containerRef.current) return;
@@ -218,16 +200,6 @@ export default function Jogar() {
               resumoFinal?.venceuComUmaVida === true,
           };
 
-          console.info("[GameOver] Jogador conectado:", {
-            jogadorId: jogadorIdRef.current,
-            nome: usuarioRef.current,
-          });
-
-          console.info(
-            "[GameOver] Resumo da partida:",
-            resumoNormalizado,
-          );
-
           salvamentoEmAndamentoRef.current = false;
           pontuacaoSalvaRef.current = false;
 
@@ -238,13 +210,31 @@ export default function Jogar() {
           setConquistasNovas([]);
           setGameOver(pontuacaoExata);
 
-          // Somente jogadores autenticados salvam dados.
-          if (tokenRef.current && jogadorIdRef.current) {
+          
+          if (jogadorIdRef.current) {
             salvarPontuacao(pontuacaoExata);
           }
         };
 
         jogo.events.on("fim-de-partida", aoTerminarPartida);
+
+        
+        const aoIniciarPartida = async () => {
+          partidaIdRef.current = null;
+          if (cancelado || !jogadorIdRef.current) return;
+
+          try {
+            const resposta = await axios.post("/api/partida", null, {
+              withCredentials: true,
+              timeout: 15000,
+            });
+            if (!cancelado) partidaIdRef.current = resposta.data.partida;
+          } catch (erro) {
+            console.error("[Partida] Não foi possível registrar o início:", erro.message);
+          }
+        };
+
+        jogo.events.on("inicio-de-partida", aoIniciarPartida);
 
         const atualizarTelaCheia = () => {
           if (!jogo || cancelado) return;
@@ -275,6 +265,10 @@ export default function Jogar() {
           jogo.events.off(
             "fim-de-partida",
             aoTerminarPartida,
+          );
+          jogo.events.off(
+            "inicio-de-partida",
+            aoIniciarPartida,
           );
         });
       } catch (erro) {

@@ -2,12 +2,14 @@ import path from "node:path";
 import dns from "node:dns";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
+import { randomUUID } from "node:crypto";
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { avaliarConquistas, validarResumo } from "./conquistas.js";
+import BancoRateLimitStore from "./rateLimitStore.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,7 +21,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL?.replace(/\/$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim();
 const JWT_SECRET = process.env.JWT_SECRET?.trim();
-const JWT_EXPIRACAO = process.env.JWT_EXPIRACAO || "7d";
+const JWT_EXPIRACAO = process.env.JWT_EXPIRACAO || "24h";
 
 
 const ORIGENS_PERMITIDAS = (process.env.FRONTEND_URL || "http://localhost:5173,http://127.0.0.1:5173")
@@ -33,15 +35,31 @@ if (!JWT_SECRET) {
   process.exit(1);
 }
 if (JWT_SECRET.length < 32) {
-  console.warn("[Auth] JWT_SECRET curta. Use pelo menos 32 caracteres aleatórios.");
+  console.error("[Auth] JWT_SECRET precisa ter pelo menos 32 caracteres aleatórios.");
+  process.exit(1);
 }
 
+
+
 const USUARIO_VALIDO = /^[\p{L}\p{N}_-]{3,20}$/u;
+const USUARIO_NOVO = /^[\p{Script=Latin}0-9_-]{3,20}$/u;
+const NOMES_RESERVADOS = new Set([
+  "admin", "administrador", "administrator", "root", "sistema", "suporte",
+  "moderador", "professor", "prof", "jbifc", "ifc", "mosquito",
+]);
+const BCRYPT_CUSTO = 12;
+
+
+const VIDAS_INICIAIS = 3;
+const SEGUNDOS_MINIMOS_POR_RODADA = 4;
+const DURACAO_MAXIMA_PARTIDA_S = 6 * 60 * 60;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PONTOS_POR_NIVEL = 5; 
 const INT_MAX = 2147483647;
 const LIMITE_RANKING_MAX = 100;
 
 
-const HASH_FALSO = bcrypt.hashSync("senha-falsa-para-igualar-o-tempo", 10);
+const HASH_FALSO = bcrypt.hashSync("senha-falsa-para-igualar-o-tempo", BCRYPT_CUSTO);
 
 
 
@@ -49,7 +67,19 @@ const escaparLike = (texto) => texto.replace(/[\\%_]/g, "\\$&");
 
 const app = express();
 app.disable("x-powered-by");
-app.set("trust proxy", 1); 
+app.set("trust proxy", 1);
+
+
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  res.setHeader("Strict-Transport-Security", "max-age=15552000");
+  res.setHeader("Cache-Control", "no-store");
+  next();
+}); 
 
 function buildSupabaseHeaders({ useServiceRole = true } = {}) {
   const apiKey = useServiceRole
@@ -107,7 +137,7 @@ async function diagnosticarSupabase() {
   return diagnostico;
 }
 
-async function supabaseFetch(table, { method = "GET", query = "", body = null, useServiceRole = true } = {}) {
+async function supabaseFetch(table, { method = "GET", query = "", body = null, useServiceRole = true, prefer } = {}) {
   if (!SUPABASE_URL) {
     throw new Error("SUPABASE_URL não configurada.");
   }
@@ -118,7 +148,9 @@ async function supabaseFetch(table, { method = "GET", query = "", body = null, u
 
   try {
     const headers = buildSupabaseHeaders({ useServiceRole });
-    if (method === "GET") delete headers.Prefer;
+    
+    if (method === "GET" || prefer === null) delete headers.Prefer;
+    else if (prefer) headers.Prefer = prefer;
 
     const response = await fetch(url, {
       method,
@@ -151,9 +183,127 @@ async function supabaseFetch(table, { method = "GET", query = "", body = null, u
   }
 }
 
-app.use(cors({ origin: ORIGENS_PERMITIDAS }));
+app.use(cors({ origin: ORIGENS_PERMITIDAS, methods: ["GET", "POST"] }));
 app.use(express.json({ limit: "10kb" }));
 
+
+
+
+app.use((req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+
+  const site = req.get("sec-fetch-site");
+  if (site === "same-origin" || site === "none") return next();
+
+  const origem = req.get("origin");
+  if (!site && !origem) return next();
+
+  let hostOrigem = null;
+  try {
+    hostOrigem = new URL(origem).host;
+  } catch {
+    
+  }
+  if (origem && (hostOrigem === req.get("host") || ORIGENS_PERMITIDAS.includes(origem))) {
+    return next();
+  }
+  return res.status(403).json({ erro: "Origem não permitida." });
+});
+
+
+
+const mensagemLimite = (erro) => ({ erro });
+
+
+
+
+const limitadorComBanco = (prefixo, opcoes) =>
+  rateLimit({
+    ...opcoes,
+    store: new BancoRateLimitStore({
+      prefixo,
+      chamarRpc: (nome, corpo) =>
+        supabaseFetch(`rpc/${nome}`, { method: "POST", body: corpo, prefer: null }),
+    }),
+  });
+
+const limiteGeral = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Muitas requisições. Aguarde um instante."),
+});
+
+
+const limiteLogin = limitadorComBanco("login", {
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  skipSuccessfulRequests: true,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Muitas tentativas de login. Tente de novo em alguns minutos."),
+});
+
+
+const limiteLoginConta = limitadorComBanco("login-conta", {
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `c:${String(req.body?.usuario ?? "").trim().toLowerCase().slice(0, 40)}`,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Muitas tentativas para esta conta. Tente de novo em alguns minutos."),
+});
+
+const limiteCadastro = limitadorComBanco("cadastro", {
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Muitos cadastros deste endereço. Tente mais tarde."),
+});
+
+
+const limitePerfil = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Muitas consultas de perfil. Aguarde um instante."),
+});
+
+
+const chaveUsuario = (req) => `u:${req.usuario?.id ?? "anon"}`;
+
+const limitePontuacaoCurto = limitadorComBanco("pontuacao-curto", {
+  windowMs: 10 * 1000,
+  limit: 1,
+  keyGenerator: chaveUsuario,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Aguarde alguns segundos antes de enviar outra partida."),
+});
+
+const limitePontuacaoHora = limitadorComBanco("pontuacao-hora", {
+  windowMs: 60 * 60 * 1000,
+  limit: 100,
+  keyGenerator: chaveUsuario,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Muitas partidas enviadas nesta hora. Tente mais tarde."),
+});
+
+const limitePartidaNova = limitadorComBanco("partida-nova", {
+  windowMs: 60 * 1000,
+  limit: 10,
+  keyGenerator: chaveUsuario,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: mensagemLimite("Muitas partidas iniciadas. Aguarde um instante."),
+});
+
+app.use(limiteGeral);
 
 app.get("/api/health", async (_req, res) => {
   try {
@@ -165,43 +315,20 @@ app.get("/api/health", async (_req, res) => {
   }
 });
 
-const mensagemLimite = (erro) => ({ erro });
 
-const limiteGeral = rateLimit({
-  windowMs: 60 * 1000,
-  limit: 120,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: mensagemLimite("Muitas requisições. Aguarde um instante."),
-});
-
-
-const limiteLogin = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  skipSuccessfulRequests: true,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: mensagemLimite("Muitas tentativas de login. Tente de novo em alguns minutos."),
-});
-
-const limiteCadastro = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 20,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: mensagemLimite("Muitos cadastros deste endereço. Tente mais tarde."),
-});
-
-app.use(limiteGeral);
 
 function validarUsuarioESenha(usuario, senha) {
-  if (typeof usuario !== "string" || !USUARIO_VALIDO.test(usuario.trim())) {
-    return "Use de 3 a 20 letras, números, _ ou -.";
+  if (typeof usuario !== "string" || !USUARIO_NOVO.test(usuario.trim())) {
+    return "Use de 3 a 20 letras latinas, números, _ ou -.";
   }
-  
+  if (NOMES_RESERVADOS.has(usuario.toLowerCase().replace(/[_-]/g, ""))) {
+    return "Este nome de usuário não está disponível.";
+  }
   if (typeof senha !== "string" || senha.length < 8 || Buffer.byteLength(senha, "utf8") > 72) {
     return "A senha deve ter de 8 a 72 caracteres.";
+  }
+  if (senha.toLowerCase() === usuario.toLowerCase()) {
+    return "A senha não pode ser igual ao nome de usuário.";
   }
   return null;
 }
@@ -238,11 +365,36 @@ function criarToken(id, usuario) {
   return jwt.sign({ id, usuario }, JWT_SECRET, { algorithm: "HS256", expiresIn: JWT_EXPIRACAO });
 }
 
+
+
+const EM_PRODUCAO = process.env.NODE_ENV === "production";
+const COOKIE_SESSAO = "jbifc_token";
+const OPCOES_COOKIE = { httpOnly: true, secure: EM_PRODUCAO, sameSite: "lax", path: "/api" };
+
+function iniciarSessao(res, id, usuario) {
+  const token = criarToken(id, usuario);
+  const { exp } = jwt.decode(token);
+  res.cookie(COOKIE_SESSAO, token, { ...OPCOES_COOKIE, maxAge: exp * 1000 - Date.now() });
+}
+
+function lerCookie(req, nome) {
+  const bruto = req.headers.cookie;
+  if (typeof bruto !== "string") return null;
+  for (const parte of bruto.split(";")) {
+    const i = parte.indexOf("=");
+    if (i > 0 && parte.slice(0, i).trim() === nome) {
+      try {
+        return decodeURIComponent(parte.slice(i + 1).trim());
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
 function autenticar(req, res, next) {
-  const cabecalho = req.headers.authorization;
-  const token = typeof cabecalho === "string" && cabecalho.startsWith("Bearer ")
-    ? cabecalho.slice(7)
-    : null;
+  const token = lerCookie(req, COOKIE_SESSAO);
 
   if (!token) return res.status(401).json({ erro: "Faça login para continuar." });
 
@@ -258,29 +410,35 @@ function autenticar(req, res, next) {
 }
 
 
+
+async function incrementarPartidas(jogadorId) {
+  const total = await supabaseFetch("rpc/incrementar_partidas", {
+    method: "POST",
+    body: { p_jogador: jogadorId },
+    prefer: null,
+  });
+  return Number(total);
+}
+
 async function registrarPartida(jogadorId, resumo) {
-  const [jogRows, existentes] = await Promise.all([
-    supabaseFetch("jogadores", { query: `select=partidas_totais&id=eq.${jogadorId}` }),
+  const [partidasTotaisApos, existentes] = await Promise.all([
+    incrementarPartidas(jogadorId),
     supabaseFetch("conquistas_jogador", { query: `select=codigo&jogador_id=eq.${jogadorId}` }),
   ]);
 
-  const partidasTotaisApos = Number(jogRows?.[0]?.partidas_totais ?? 0) + 1;
   const novas = avaliarConquistas(
     { ...resumo, partidasTotaisApos },
     (existentes ?? []).map((e) => e.codigo),
   );
 
-  await supabaseFetch("jogadores", {
-    method: "PATCH",
-    query: `id=eq.${jogadorId}`,
-    body: { partidas_totais: partidasTotaisApos },
-  });
-
   if (novas.length === 0) return [];
 
   const agora = new Date().toISOString();
+  
   const inseridas = await supabaseFetch("conquistas_jogador", {
     method: "POST",
+    query: "on_conflict=jogador_id,codigo",
+    prefer: "resolution=ignore-duplicates,return=representation",
     body: novas.map((d) => ({
       jogador_id: jogadorId,
       codigo: d.id,
@@ -335,18 +493,15 @@ app.post("/api/conta", limiteCadastro, async (req, res) => {
       return res.status(409).json({ erro: "Este nome de usuário já está em uso." });
     }
 
-    const senhaHash = await bcrypt.hash(senha, 10);
+    const senhaHash = await bcrypt.hash(senha, BCRYPT_CUSTO);
     const rows = await supabaseFetch("jogadores", {
       method: "POST",
       body: { usuario, senha_hash: senhaHash },
     });
 
     const jogador = Array.isArray(rows) ? rows[0] : rows;
-    res.status(201).json({
-      id: jogador.id,
-      usuario: jogador.usuario,
-      token: criarToken(jogador.id, jogador.usuario),
-    });
+    iniciarSessao(res, jogador.id, jogador.usuario);
+    res.status(201).json({ id: jogador.id, usuario: jogador.usuario });
   } catch (err) {
     
     const mensagem = err.message || "";
@@ -358,7 +513,7 @@ app.post("/api/conta", limiteCadastro, async (req, res) => {
   }
 });
 
-app.post("/api/login", limiteLogin, async (req, res) => {
+app.post("/api/login", limiteLogin, limiteLoginConta, async (req, res) => {
   const usuario = typeof req.body?.usuario === "string" ? req.body.usuario.trim() : "";
   const senha = typeof req.body?.senha === "string" ? req.body.senha : "";
   const credenciaisInvalidas = { erro: "Nome de usuário ou senha incorretos." };
@@ -376,15 +531,17 @@ app.post("/api/login", limiteLogin, async (req, res) => {
       return res.status(401).json(credenciaisInvalidas);
     }
 
-    res.json({
-      id: jogador.id,
-      usuario: jogador.usuario,
-      token: criarToken(jogador.id, jogador.usuario),
-    });
+    iniciarSessao(res, jogador.id, jogador.usuario);
+    res.json({ id: jogador.id, usuario: jogador.usuario });
   } catch (err) {
     console.error("[Login] Erro ao entrar:", err);
     res.status(500).json({ erro: "Erro ao entrar. Tente novamente." });
   }
+});
+
+app.post("/api/logout", (_req, res) => {
+  res.clearCookie(COOKIE_SESSAO, OPCOES_COOKIE);
+  res.status(204).end();
 });
 
 app.get("/api/usuario", autenticar, async (req, res) => {
@@ -405,7 +562,7 @@ app.get("/api/usuario", autenticar, async (req, res) => {
 });
 
 
-app.get("/api/usuarios/:usuario", async (req, res) => {
+app.get("/api/usuarios/:usuario", limitePerfil, async (req, res) => {
   const nome = String(req.params.usuario ?? "").trim();
 
   try {
@@ -420,7 +577,6 @@ app.get("/api/usuarios/:usuario", async (req, res) => {
     ]);
 
     res.json({
-      id: jogador.id,
       usuario: jogador.usuario,
       partidasTotais: Number(jogador.partidas_totais ?? 0),
       
@@ -483,21 +639,43 @@ app.get("/api/ranking", async (req, res) => {
   }
 });
 
-app.post("/api/ranking", autenticar, async (req, res) => {
-  const { pontuacao, resumo, nivel } = req.body || {};
-  const nivelValido = nivel === undefined ? 0 : nivel;
+
+
+app.post("/api/partida", autenticar, limitePartidaNova, async (req, res) => {
+  const id = randomUUID();
+  try {
+    await supabaseFetch("partidas_em_andamento", {
+      method: "POST",
+      query: "on_conflict=jogador_id",
+      prefer: "resolution=merge-duplicates,return=representation",
+      body: { jogador_id: req.usuario.id, id, iniciada_em: new Date().toISOString(), usada: false },
+    });
+    res.status(201).json({ partida: id });
+  } catch (err) {
+    console.error("[Partida] Erro ao registrar o início:", err);
+    res.status(500).json({ erro: "Erro ao iniciar a partida." });
+  }
+});
+
+app.post("/api/ranking", autenticar, limitePontuacaoCurto, limitePontuacaoHora, async (req, res) => {
+  
+  const { pontuacao, resumo, partida } = req.body || {};
 
   if (!Number.isInteger(pontuacao) || pontuacao < 0 || pontuacao > INT_MAX) {
     return res.status(400).json({ erro: "A pontuação deve ser um inteiro não negativo." });
   }
-  if (!Number.isInteger(nivelValido) || nivelValido < 0 || nivelValido > INT_MAX) {
-    return res.status(400).json({ erro: "O campo 'nivel' deve ser um inteiro maior ou igual a 0." });
-  }
+  const nivelValido = Math.floor(pontuacao / PONTOS_POR_NIVEL);
 
   const resumoValido = validarResumo(resumo, pontuacao);
   if (!resumoValido) {
     return res.status(400).json({ erro: "Resumo da partida inválido." });
   }
+
+  if (typeof partida !== "string" || !UUID_RE.test(partida)) {
+    return res.status(400).json({ erro: "Partida não registrada. Jogue novamente para salvar." });
+  }
+
+  let partidaConsumida = false;
 
   try {
     const jogadores = await supabaseFetch("jogadores", {
@@ -507,6 +685,40 @@ app.post("/api/ranking", autenticar, async (req, res) => {
 
     if (!jogador) {
       return res.status(401).json({ erro: "Conta não encontrada. Entre novamente." });
+    }
+
+    
+    
+    const consumida = await supabaseFetch("partidas_em_andamento", {
+      method: "PATCH",
+      query: `jogador_id=eq.${jogador.id}&id=eq.${partida}&usada=eq.false`,
+      body: { usada: true },
+    });
+
+    if (!Array.isArray(consumida) || consumida.length === 0) {
+      const linhas = await supabaseFetch("partidas_em_andamento", {
+        query: `select=id,usada&jogador_id=eq.${jogador.id}`,
+      });
+      const atualPartida = Array.isArray(linhas) ? linhas[0] : null;
+      if (atualPartida?.id === partida && atualPartida.usada) {
+        return res.status(409).json({ erro: "Esta partida já foi registrada.", codigo: "partida_ja_registrada" });
+      }
+      return res.status(409).json({ erro: "Partida inválida ou substituída por uma mais nova.", codigo: "partida_invalida" });
+    }
+    partidaConsumida = true;
+
+    const duracaoS = (Date.now() - Date.parse(consumida[0].iniciada_em)) / 1000;
+    const minimoS = (pontuacao + VIDAS_INICIAIS) * SEGUNDOS_MINIMOS_POR_RODADA;
+    if (duracaoS > DURACAO_MAXIMA_PARTIDA_S || duracaoS < minimoS) {
+      
+      await supabaseFetch("partidas_em_andamento", {
+        method: "DELETE",
+        query: `jogador_id=eq.${jogador.id}&id=eq.${partida}`,
+      }).catch(() => {});
+      partidaConsumida = false;
+      return duracaoS > DURACAO_MAXIMA_PARTIDA_S
+        ? res.status(409).json({ erro: "Partida expirada.", codigo: "partida_invalida" })
+        : res.status(400).json({ erro: "A partida terminou rápido demais para ser válida." });
     }
 
     const atual = await supabaseFetch("ranking", {
@@ -551,6 +763,18 @@ app.post("/api/ranking", autenticar, async (req, res) => {
     });
   } catch (err) {
     console.error("[Ranking] Erro ao salvar pontuação:", err);
+    
+    if (partidaConsumida) {
+      try {
+        await supabaseFetch("partidas_em_andamento", {
+          method: "PATCH",
+          query: `jogador_id=eq.${req.usuario.id}&id=eq.${partida}`,
+          body: { usada: false },
+        });
+      } catch {
+        
+      }
+    }
     res.status(500).json({ erro: "Erro ao salvar no ranking." });
   }
 });

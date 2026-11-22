@@ -1,9 +1,8 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Menu, X } from "lucide-react";
 import Container from "./Container";
-
-const CHAVE_TOKEN = "jbifc_token";
+import { useAuth } from "../auth/useAuth";
 
 const rotaPerfil = (nome) => `/perfil/${encodeURIComponent(nome)}`;
 
@@ -15,21 +14,6 @@ const LINKS = [
 ];
 
 const foco ="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-function lerUsuario() {
-  try {
-    const token = localStorage.getItem(CHAVE_TOKEN);
-    if (!token) return null;
-    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const dados = JSON.parse(new TextDecoder().decode(bytes));
-    if (dados.exp && dados.exp * 1000 < Date.now()) return null;
-    return typeof dados.usuario === "string" && dados.usuario ? dados.usuario : null;
-  } catch {
-    return null;
-  }
-}
-
 function MenuUsuario({ usuario, aoSair }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef(null);
@@ -115,16 +99,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [menuAberto, setMenuAberto] = useState(false);
   const botaoMenu = useRef(null);
-  const [, atualizar] = useReducer((n) => n + 1, 0);
-  const usuario = lerUsuario();
-
-  useEffect(() => {
-    const aoMudarStorage = (e) => {
-      if (e.key === CHAVE_TOKEN || e.key === null) atualizar();
-    };
-    window.addEventListener("storage", aoMudarStorage);
-    return () => window.removeEventListener("storage", aoMudarStorage);
-  }, []);
+  const { usuario, sair: encerrarSessao } = useAuth();
 
   useEffect(() => {
     if (!menuAberto) return;
@@ -138,9 +113,8 @@ export default function Navbar() {
     return () => document.removeEventListener("keydown", aoApertarTecla);
   }, [menuAberto]);
 
-  function sair() {
-    localStorage.removeItem(CHAVE_TOKEN);
-    atualizar();
+  async function sair() {
+    await encerrarSessao();
     navigate("/");
   }
 

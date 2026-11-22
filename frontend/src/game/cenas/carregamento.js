@@ -39,7 +39,7 @@ export default class Carregamento extends Phaser.Scene {
 
     this.load.svg("logo", "/game/JBIFC.svg");
     this.load.svg("IFC", "/game/IFC.svg");
-    this.load.image("professor", "game/renato.jpg")
+    this.load.image("professor", "game/menu/renato.jpg")
 
     this.load.svg("menu-arvore", "/game/menu/arvore.svg");
     this.load.svg("menu-ceu", "/game/menu/ceu.svg");
@@ -99,6 +99,27 @@ export default class Carregamento extends Phaser.Scene {
     this.load.svg("vdp-pessoa16", "/game/vigilia-dos-porcos/pessoa16.svg");
     this.load.svg("vdp-pessoa17", "/game/vigilia-dos-porcos/pessoa17.svg");
     this.load.svg("vdp-pessoa18", "/game/vigilia-dos-porcos/pessoa18.svg");
+
+    this.load.svg("tot-totem_bg", "/game/totem/totem_bg.svg");
+    this.load.svg("tot-certo", "/game/totem/item_certo.svg");
+    this.load.svg("tot-errado", "/game/totem/item_errado.svg");
+    this.load.svg("tot-papel", "/game/totem/papel.svg");
+
+    this.load.svg("pml-barra-acerto", "/game/pegue-mais-lanche/barra_acerto.svg");
+    this.load.svg("pml-barra-fundo", "/game/pegue-mais-lanche/barra_fundo.svg");
+    this.load.svg("pml-barra-detalhe", "/game/pegue-mais-lanche/barra_detalhe.svg");
+    this.load.svg("pml-mao-tia1", "/game/pegue-mais-lanche/mao_tia1.svg");
+    this.load.svg("pml-mao-tia2", "/game/pegue-mais-lanche/mao_tia2.svg");
+    this.load.svg("pml-mao1", "/game/pegue-mais-lanche/mao1.svg");
+    this.load.svg("pml-mao2", "/game/pegue-mais-lanche/mao2.svg");
+    this.load.svg("pml-mao3", "/game/pegue-mais-lanche/mao3.svg");
+    this.load.svg("pml-mao4", "/game/pegue-mais-lanche/mao4.svg");
+    this.load.svg("pml-mao5", "/game/pegue-mais-lanche/mao5.svg");
+    this.load.svg("pml-rosto1", "/game/pegue-mais-lanche/rosto1.svg");
+    this.load.svg("pml-rosto2", "/game/pegue-mais-lanche/rosto2.svg");
+    this.load.svg("pml-tia-bg", "/game/pegue-mais-lanche/tia_bg.svg");
+    
+
   }
 
   create() {

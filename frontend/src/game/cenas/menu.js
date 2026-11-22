@@ -7,7 +7,7 @@ const TITULOS = [
   "menu-titulo2",
   "menu-titulo3",
 ];
-const KONAMI = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; // ↑↑↓↓←→←→ B A
+const KONAMI = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; 
 
 export default class Menu extends Phaser.Scene {
   constructor() {
@@ -388,10 +388,10 @@ export default class Menu extends Phaser.Scene {
     this.menuIniciado = true;
   }
 
-  // Chame no fim de criarMosquito(), depois de containerMosquito.add(...)
+  
   criarProfessor() {
     this.professor = this.add.image(0, 0, "professor");
-    // altura da foto = 30% da tela; ajuste ao gosto
+    
     this.professor.setScale((this.altura * 0.3) / this.professor.height);
     this.containerMosquito.add(this.professor);
     this.aplicarProfessor(this.registry.get("eggProfessor") === true);
@@ -400,14 +400,14 @@ export default class Menu extends Phaser.Scene {
   aplicarProfessor(ativo) {
     this.professor.setVisible(ativo);
     this.mosquito.setVisible(!ativo);
-    this.registry.set("eggProfessor", ativo); // sobrevive ao voltar para o menu
+    this.registry.set("eggProfessor", ativo); 
   }
 
   configurarKonami() {
     const combo = this.input.keyboard.createCombo(KONAMI, { resetOnMatch: true });
 
     const aoCompletar = () => {
-      // só depois da intro, para não bagunçar a animação de entrada
+      
       if (this.menuIniciado) this.aplicarProfessor(!this.professor.visible);
     };
 

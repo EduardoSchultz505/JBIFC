@@ -1,4 +1,3 @@
-
 import Phaser from "phaser";
 
 const TELA = { x: 368, y: 246, w: 408, h: 304 };
@@ -23,7 +22,7 @@ const TEXTURAS = [
 const CANO_ALTO = "nsp-cano-alto";
 
 export default class JogueSemSerPego {
-  titulo = "JONHA BIRD";
+  static titulo = "JONHA BIRD";
   descricao = "Jogue o clássico Jonha Bird, mas cuidado! O professor não pode ver você jogando. Quando ele aparecer, esconda o jogo rapidamente apertando E.";
   controles = [
     "ESPAÇO / MOUSE 1: PULAR",
@@ -69,9 +68,6 @@ export default class JogueSemSerPego {
   aplicarDificuldade(nivel) {
     this.ritmo = Math.min(1.8, 1 / 0.9 ** nivel);
 
-    console.log(
-      `[Jogue Sem Ser Pego] Nível: ${nivel} | Ritmo: ${this.ritmo.toFixed(2)}x`
-    );
   }
 
   iniciar() {
@@ -182,7 +178,7 @@ export default class JogueSemSerPego {
 
     this.profY = height - 10;
 
-    // Aviso visual para alertas do jogo.
+    
     this.aviso = add
       .text(width / 2, 70, "", {
         fontFamily: "Arial",
@@ -205,7 +201,7 @@ export default class JogueSemSerPego {
         .setDepth(20);
     }
 
-    // Controles do jogo.
+    
     this.aoPular = () => this.pular();
     this.aoAba = () => this.alternarAba();
 

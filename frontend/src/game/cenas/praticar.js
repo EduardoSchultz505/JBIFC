@@ -27,6 +27,12 @@ const COR = {
 
 const JOGOS_POR_PAGINA = 6;
 
+const NOMES_MINIGAMES = {
+  BL: "LOCKPICK",
+  OL: "JOGUE SEM SER PEGO",
+  AL: "VIGÍLIA DOS PORCOS",
+};
+
 export default class Pratica extends Phaser.Scene {
   constructor() {
     super("Pratica");
@@ -118,7 +124,7 @@ export default class Pratica extends Phaser.Scene {
 
       const y = 190 + linha * espacamentoY;
 
-      const nome = this.formatarNome(Minigame.name);
+      const nome = Minigame.titulo ?? this.formatarNome(Minigame.name);
 
       this.criarBotao(x, y, nome, () => {
         this.iniciarMinigame(Minigame);
@@ -161,13 +167,13 @@ export default class Pratica extends Phaser.Scene {
   }
 
   formatarNome(nome) {
-    if (!nome) return "MINIGAME";
+  if (!nome) return "MINIGAME";
 
-    return nome
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/[_-]/g, " ")
-      .toUpperCase();
-  }
+  return NOMES_MINIGAMES[nome] || nome
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]/g, " ")
+    .toUpperCase();
+}
 
   criarBotaoSair() {
     
@@ -216,7 +222,7 @@ export default class Pratica extends Phaser.Scene {
       this,
       width / 2,
       height / 2,
-      this.minigame.instrucao || "",
+      this.minigame.constructor.titulo ?? this.minigame.titulo ?? this.minigame.instrucao ?? "",
       {
         fontFamily: FONTE,
         fontSize: "35px",

@@ -23,7 +23,7 @@ const TEXTURAS = [
 const INTERVALO_PORCO = 500;
 
 export default class Lockpick {
-  titulo = "SOLTE OS PORCOS!";
+  static titulo = "SOLTE OS PORCOS";
   descricao = "Faça um rápido minigame de lockpick para arrombar o portão e libertar os pobres porcos!";
   controles = [
     "E: ENCAIXAR GAZUA",
