@@ -104,6 +104,22 @@ export default class Carregamento extends Phaser.Scene {
     this.load.svg("tot-certo", "/game/totem/item_certo.svg");
     this.load.svg("tot-errado", "/game/totem/item_errado.svg");
     this.load.svg("tot-papel", "/game/totem/papel.svg");
+
+    this.load.svg("pml-barra-acerto", "/game/pegue-mais-lanche/barra_acerto.svg");
+    this.load.svg("pml-barra-fundo", "/game/pegue-mais-lanche/barra_fundo.svg");
+    this.load.svg("pml-barra-detalhe", "/game/pegue-mais-lanche/barra_detalhe.svg");
+    this.load.svg("pml-mao-tia1", "/game/pegue-mais-lanche/mao_tia1.svg");
+    this.load.svg("pml-mao-tia2", "/game/pegue-mais-lanche/mao_tia2.svg");
+    this.load.svg("pml-mao1", "/game/pegue-mais-lanche/mao1.svg");
+    this.load.svg("pml-mao2", "/game/pegue-mais-lanche/mao2.svg");
+    this.load.svg("pml-mao3", "/game/pegue-mais-lanche/mao3.svg");
+    this.load.svg("pml-mao4", "/game/pegue-mais-lanche/mao4.svg");
+    this.load.svg("pml-mao5", "/game/pegue-mais-lanche/mao5.svg");
+    this.load.svg("pml-rosto1", "/game/pegue-mais-lanche/rosto1.svg");
+    this.load.svg("pml-rosto2", "/game/pegue-mais-lanche/rosto2.svg");
+    this.load.svg("pml-tia-bg", "/game/pegue-mais-lanche/tia_bg.svg");
+    
+
   }
 
   create() {

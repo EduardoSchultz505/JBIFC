@@ -37,13 +37,14 @@ export default class Partida extends Phaser.Scene {
     this.pontos = 0;
     this.fasesCompletas = 0;
 
-    // Estatísticas das conquistas
+    
     this.sequenciaAtual = 0;
     this.sequenciaMaxima = 0;
     this.venceuComUmaVida = false;
     this.minigameMaisRapidoMs = null;
 
-    this.ultimo = null;
+    this.rodadaSorteio = 0;
+this.registroSorteio = new Map(); 
     this.minigame = null;
     this.estado = "instrucao";
     this.partidaTerminada = false;
@@ -123,7 +124,7 @@ export default class Partida extends Phaser.Scene {
       return;
     }
 
-    // Avisa o React para registrar o início da partida no servidor
+    
     this.game.events.emit("inicio-de-partida");
 
     this.proximaRodada();
@@ -242,16 +243,38 @@ export default class Partida extends Phaser.Scene {
   }
 
   sortear() {
-    const opcoes =
-      MINIGAMES.length > 1
-        ? MINIGAMES.filter((M) => M !== this.ultimo)
-        : MINIGAMES;
+  if (MINIGAMES.length === 1) return MINIGAMES[0];
 
-    const escolhido = Phaser.Utils.Array.GetRandom(opcoes);
-    this.ultimo = escolhido;
+  const rodada = this.rodadaSorteio++;
 
-    return escolhido;
+  
+  const candidatos = MINIGAMES.map((M) => {
+    const reg = this.registroSorteio.get(M);
+    if (!reg) return { M, peso: 10 }; 
+
+    const ausencia = rodada - reg.ultima;
+    if (ausencia <= 1) return { M, peso: 0 }; 
+    return { M, peso: ausencia ** 2 / (1 + reg.vezes) };
+  });
+
+  
+  const total = candidatos.reduce((soma, c) => soma + c.peso, 0);
+  let alvo = Math.random() * total;
+  let escolhido = candidatos[candidatos.length - 1].M;
+
+  for (const c of candidatos) {
+    if (c.peso <= 0) continue;
+    alvo -= c.peso;
+    if (alvo <= 0) {
+      escolhido = c.M;
+      break;
+    }
   }
+
+  const reg = this.registroSorteio.get(escolhido) ?? { vezes: 0, ultima: 0 };
+  this.registroSorteio.set(escolhido, { vezes: reg.vezes + 1, ultima: rodada });
+  return escolhido;
+}
 
   calcularTempo(duracaoBase) {
     const ms = duracaoBase * 1000 * 0.9 ** this.nivel();
@@ -319,11 +342,11 @@ export default class Partida extends Phaser.Scene {
     if (venceu) {
       const nivelAnterior = this.nivel();
 
-      // Atualiza pontuação e vitórias
+      
       this.pontos += PONTOS_POR_VITORIA;
       this.fasesCompletas += 1;
 
-      // Atualiza sequência de vitórias consecutivas
+      
       this.sequenciaAtual += 1;
 
       this.sequenciaMaxima = Math.max(
@@ -331,12 +354,12 @@ export default class Partida extends Phaser.Scene {
         this.sequenciaAtual
       );
 
-      // Registra vitória com exatamente uma vida restante
+      
       if (this.vidas === 1) {
         this.venceuComUmaVida = true;
       }
 
-      // Registra o menor tempo somente em vitórias
+      
       if (tempoExecutado > 0) {
         if (
           this.minigameMaisRapidoMs === null ||
@@ -357,7 +380,7 @@ export default class Partida extends Phaser.Scene {
         )
         .setColor(COR.verde);
     } else {
-      // Perdeu: reduz uma vida e zera a sequência atual
+      
       this.vidas -= 1;
       this.sequenciaAtual = 0;
 

@@ -124,7 +124,7 @@ export default class Pratica extends Phaser.Scene {
 
       const y = 190 + linha * espacamentoY;
 
-      const nome = Minigame.titulo;
+      const nome = Minigame.titulo ?? this.formatarNome(Minigame.name);
 
       this.criarBotao(x, y, nome, () => {
         this.iniciarMinigame(Minigame);
@@ -222,7 +222,7 @@ export default class Pratica extends Phaser.Scene {
       this,
       width / 2,
       height / 2,
-      this.minigame.instrucao || "",
+      this.minigame.constructor.titulo ?? this.minigame.titulo ?? this.minigame.instrucao ?? "",
       {
         fontFamily: FONTE,
         fontSize: "35px",

@@ -58,7 +58,7 @@ class CenaInstrucao extends Phaser.Scene {
         this,
         width / 2,
         height * 0.32,
-        minigame.titulo ?? minigame.instrucao ?? "",
+        minigame.constructor.titulo ?? minigame.titulo ?? minigame.instrucao ?? "",
         estilo(60, COR.branco)
       ),
 

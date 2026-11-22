@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 export default class VigiliaDosPorcos {
-  static titulo = "PARADO AÍ!";
+  static titulo = "VIGÍLIA DOS PORCOS";
   descricao = "Como um guarda noturno, impeça que os alunos causem confusão durante a noite. Fique atento e não deixe ninguém aprontar!";
 
   controles = [
@@ -40,14 +40,14 @@ export default class VigiliaDosPorcos {
       y: -1,
     };
 
-    // Fundo.
+    
     this.fundo = this.scene.add
       .image(0, 0, "vdp-campo")
       .setOrigin(0)
       .setDisplaySize(width, height)
       .setDepth(0);
 
-    // Sorteia 3 pessoas diferentes.
+    
     const pessoasDisponiveis = Array.from(
       { length: 18 },
       (_, i) => i + 1
@@ -60,7 +60,7 @@ export default class VigiliaDosPorcos {
       this.quantidade
     );
 
-    // Adiciona as pessoas.
+    
     this.ladroes = this.pessoasEscolhidas.map((numero) => {
       const obj = this.scene.add
         .image(0, 0, `vdp-pessoa${numero}`)
@@ -78,7 +78,7 @@ export default class VigiliaDosPorcos {
       };
     });
 
-    // Camada escura.
+    
     this.escuro = this.scene.add
       .rectangle(
         width / 2,
@@ -90,12 +90,12 @@ export default class VigiliaDosPorcos {
       )
       .setDepth(2);
 
-    // Feixe de iluminação.
+    
     this.feixe = this.scene.add
       .graphics()
       .setDepth(2.5);
 
-    // Lanterna.
+    
     this.lanterna = this.scene.add
       .rectangle(
         this.origem.x,
@@ -106,10 +106,10 @@ export default class VigiliaDosPorcos {
       )
       .setDepth(3);
 
-    // Controles pelas setas.
+    
     this.teclas = this.scene.input.keyboard.createCursorKeys();
 
-    // Clique para encontrar pessoas.
+    
     this.aoClicar = (pointer) => {
       if (this.estado !== "jogando") return;
 
@@ -128,7 +128,7 @@ export default class VigiliaDosPorcos {
 
     this.scene.input.on("pointerdown", this.aoClicar);
 
-    // Atualização do jogo.
+    
     this.aoAtualizar = () => this.quadro();
 
     this.scene.events.on("update", this.aoAtualizar);
@@ -145,7 +145,7 @@ export default class VigiliaDosPorcos {
     const { x: ox, y: oy } = this.origem;
     const r = this.raio;
 
-    // Movimento pelo mouse.
+    
     const p = this.scene.input.activePointer;
 
     if (
@@ -161,7 +161,7 @@ export default class VigiliaDosPorcos {
       this.centro.y = p.y;
     }
 
-    // Movimento pelas setas.
+    
     const passo = this.velSetas * (dt / 1000);
 
     if (this.teclas.left.isDown) {
@@ -180,7 +180,7 @@ export default class VigiliaDosPorcos {
       this.centro.y += passo;
     }
 
-    // Limita a posição da lanterna.
+    
     this.centro.x = Phaser.Math.Clamp(
       this.centro.x,
       0,
@@ -202,7 +202,7 @@ export default class VigiliaDosPorcos {
       cy
     );
 
-    // Verifica se a lanterna está sobre alguma pessoa.
+    
     for (const l of this.ladroes) {
       if (l.achado) continue;
 
@@ -215,7 +215,7 @@ export default class VigiliaDosPorcos {
       if (iluminada) {
         l.tempoIluminado += dt;
       } else {
-        // Reduz o progresso quando a pessoa sai da luz.
+        
         l.tempoIluminado = Math.max(
           0,
           l.tempoIluminado - dt * 0.5
@@ -227,7 +227,7 @@ export default class VigiliaDosPorcos {
       }
     }
 
-    // Desenha o feixe de iluminação.
+    
     const D = Phaser.Math.Distance.Between(
       ox,
       oy,
@@ -268,11 +268,11 @@ export default class VigiliaDosPorcos {
       this.feixe.fillPath();
     }
 
-    // Rotaciona a lanterna.
+    
     this.lanterna.setRotation(ang);
   }
 
-  // Marca uma pessoa como encontrada.
+  
   encontrarPessoa(ladrao) {
     if (ladrao.achado) return;
 
@@ -284,14 +284,14 @@ export default class VigiliaDosPorcos {
       .setDepth(2.1)
       .clearTint();
 
-    // Verifica se todas foram encontradas.
+    
     if (this.ladroes.every((p) => p.achado)) {
       this.estado = "ganhou";
     }
   }
 
-  // Cria uma máscara para identificar os pixels
-  // realmente ocupados pela pessoa no SVG.
+  
+  
   criarMascaraPessoa(numero) {
     const textura = this.scene.textures.get(
       `vdp-pessoa${numero}`
@@ -324,7 +324,7 @@ export default class VigiliaDosPorcos {
     };
   }
 
-  // Verifica se o ponto do clique atingiu a pessoa.
+  
   pessoaContemPonto(ladrao, x, y) {
     const mascara = ladrao.mascara;
     const { width, height } = this.scene.scale;
@@ -352,7 +352,7 @@ export default class VigiliaDosPorcos {
     return mascara.pixels[indice + 3] > 30;
   }
 
-  // Verifica se existe parte da pessoa dentro do círculo de luz.
+  
   pessoaIluminada(ladrao, cx, cy) {
     const mascara = ladrao.mascara;
     const { width, height } = this.scene.scale;
@@ -403,7 +403,7 @@ export default class VigiliaDosPorcos {
   }
 
   destruir() {
-    // Remove os eventos.
+    
     this.scene.events.off(
       "update",
       this.aoAtualizar
@@ -414,18 +414,18 @@ export default class VigiliaDosPorcos {
       this.aoClicar
     );
 
-    // Remove as teclas.
+    
     Object.values(this.teclas ?? {}).forEach((tecla) => {
       this.scene.input.keyboard.removeKey(tecla);
     });
 
-    // Remove os elementos gráficos.
+    
     this.escuro?.destroy();
     this.feixe?.destroy();
     this.lanterna?.destroy();
     this.fundo?.destroy();
 
-    // Remove as pessoas.
+    
     this.ladroes.forEach((l) => {
       l.obj.destroy();
     });
