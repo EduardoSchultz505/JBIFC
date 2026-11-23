@@ -1,12 +1,17 @@
 const COPIAS = [0, 1, 2, 3];
 
+import JonhaBird from "../assets/jonha_bird_print.jpg";
+import SolteOsPorcos from "../assets/solte_os_porcos_print.jpg";
+import PegueMaisLanche from "../assets/pegue_mais_lanche_print.jpg";
+import UseOTotem from "../assets/use_o_totem_print.jpg";
+import VigiliaDosPorcos from "../assets/vigilia_dos_porcos_print.jpg";
+
 const jogos = [
-  { nome: "Vigília dos Porcos", imagem: "" },
-  { nome: "Não Seja Pego", imagem: "" },
-  { nome: "Lâmpada no Teto", imagem: "" },
-  { nome: "Raciocínio", imagem: "" },
-  { nome: "Pegar Dois Lanches", imagem: "" },
-  { nome: "Use o Totem", imagem: "" },
+  { nome: "Vigília dos Porcos", imagem: VigiliaDosPorcos },
+  { nome: "Jonha Bird", imagem: JonhaBird },
+  { nome: "Solte os Porcos", imagem: SolteOsPorcos },
+  { nome: "Pegue Mais Lanche", imagem: PegueMaisLanche },
+  { nome: "Use o Totem", imagem: UseOTotem },
 ];
 
 export default function Carrossel() {

@@ -25,10 +25,10 @@ const POSICOES_Y = [33, 66, 99, 132];
 const INCLINACAO_X = [0, 3, 6];
 
 class Totem {
-  static titulo = "TOTEM";
+  static titulo = "USE O TOTEM";
 
   descricao =
-    "Compre todos os lanches bons no totem";
+    "Compre todos os lanches bons no totem e não pegue nenhum ruim";
 
   controles = ["MOUSE 1: SELECIONAR"];
 

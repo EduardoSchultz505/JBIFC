@@ -9,6 +9,7 @@ import Tutorial from "./pages/Tutorial";
 import Login from "./pages/Login";
 import Perfil from "./pages/Perfil";
 import ScrollToTop from "./components/ScrollToTop";
+import Pagina404 from "./pages/Pagina404";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/como-jogar" element={<Tutorial />} />
         <Route path="/login" element={<Login />} />
         <Route path="/perfil/:nome" element={<Perfil />} />
+        <Route path="*" element={<Pagina404 />} />
       </Routes>
       <Footer />
     </div>

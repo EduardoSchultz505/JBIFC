@@ -39,7 +39,8 @@ export default class Carregamento extends Phaser.Scene {
 
     this.load.svg("logo", "/game/JBIFC.svg");
     this.load.svg("IFC", "/game/IFC.svg");
-    this.load.image("professor", "game/menu/renato.jpg")
+    this.load.image("professor", "/game/menu/renato.jpg")
+    this.load.image("corinthians", "/game/menu/corinthians.png")
 
     this.load.svg("menu-arvore", "/game/menu/arvore.svg");
     this.load.svg("menu-ceu", "/game/menu/ceu.svg");
@@ -50,7 +51,6 @@ export default class Carregamento extends Phaser.Scene {
     this.load.svg("menu-placa", "/game/menu/placa.svg");
     this.load.svg("menu-titulo1", "/game/menu/titulo1.svg");
     this.load.svg("menu-titulo2", "/game/menu/titulo2.svg");
-    this.load.svg("menu-titulo3", "/game/menu/titulo3.svg");
 
     this.load.audio("musica-pause", "/game/music/menu_pausa.mp3");
     this.load.audio("musica-principal", "/game/music/menu_principal.mp3");
@@ -59,7 +59,7 @@ export default class Carregamento extends Phaser.Scene {
     this.load.audio("musica-minigame3", "/game/music/minigame3.mp3");
     this.load.audio("musica-minigame4", "/game/music/minigame4.mp3");
 
-    this.load.svg("nsp-fundo","/game/nao-seja-pego/tela_principal.svg",{ width: 2560, height: 1440 });
+    this.load.svg("nsp-fundo","/game/nao-seja-pego/tela_principal.svg");
     this.load.svg("nsp-cano", "/game/nao-seja-pego/cano.svg");
     this.load.svg("nsp-bird", "/game/nao-seja-pego/fap_bird.svg");
     this.load.svg("nsp-bird-bg", "/game/nao-seja-pego/fap_bird_bg.svg");
@@ -118,8 +118,6 @@ export default class Carregamento extends Phaser.Scene {
     this.load.svg("pml-rosto1", "/game/pegue-mais-lanche/rosto1.svg");
     this.load.svg("pml-rosto2", "/game/pegue-mais-lanche/rosto2.svg");
     this.load.svg("pml-tia-bg", "/game/pegue-mais-lanche/tia_bg.svg");
-    
-
   }
 
   create() {

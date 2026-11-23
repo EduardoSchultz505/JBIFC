@@ -2,12 +2,7 @@
 import Phaser from "phaser";
 import { criarTexto } from "../sistema/qualidadeGraficos";
 
-const TITULOS = [
-  "menu-titulo1",
-  "menu-titulo2",
-  "menu-titulo3",
-];
-const KONAMI = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; 
+const KONAMI = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
 
 export default class Menu extends Phaser.Scene {
   constructor() {
@@ -26,8 +21,9 @@ export default class Menu extends Phaser.Scene {
 
     this.criarCenario();
     this.criarMosquito();
-    this.criarProfessor()
-    this.criarTitulos();
+    this.criarProfessor();
+    this.criarCorinthians();
+    this.criarTitulo();
     this.criarPlacas();
 
     if (this.registry.get("introMenuVista")) {
@@ -36,12 +32,9 @@ export default class Menu extends Phaser.Scene {
       this.registry.set("introMenuVista", true);
       this.animarMosquito();
     }
-    this.configurarKonami()
+
+    this.configurarKonami();
   }
-
-
-
-
 
   iniciarMusica() {
     let musicaMenu = this.registry.get("musicaMenu");
@@ -74,10 +67,6 @@ export default class Menu extends Phaser.Scene {
     }
   }
 
-
-
-
-
   criarImagemTelaCheia(chave, depth) {
     return this.add
       .image(0, 0, chave)
@@ -86,10 +75,6 @@ export default class Menu extends Phaser.Scene {
       .setDepth(depth);
   }
 
-
-
-
-
   criarCenario() {
     this.criarImagemTelaCheia("menu-ceu", 0);
     this.criarImagemTelaCheia("menu-efeito", 1);
@@ -97,10 +82,6 @@ export default class Menu extends Phaser.Scene {
     this.criarImagemTelaCheia("menu-arvore", 3);
     this.criarImagemTelaCheia("menu-grama", 4);
   }
-
-
-
-
 
   criarMosquito() {
     const eixoX = this.largura * 0.84;
@@ -111,11 +92,8 @@ export default class Menu extends Phaser.Scene {
       eixoY
     ).setDepth(5);
 
-    this.mosquito = this.add.image(
-      -eixoX,
-      -eixoY,
-      "menu-mosquito"
-    )
+    this.mosquito = this.add
+      .image(-eixoX, -eixoY, "menu-mosquito")
       .setOrigin(0, 0)
       .setDisplaySize(this.largura, this.altura);
 
@@ -135,10 +113,11 @@ export default class Menu extends Phaser.Scene {
       angle: 355,
       duration: 1400,
       ease: "Back.Out",
+
       onComplete: () => {
         this.containerMosquito.setAngle(-5);
         this.animarFlutuacaoMosquito();
-        this.animarTitulo(0);
+        this.animarTitulo();
       },
     });
   }
@@ -166,67 +145,137 @@ export default class Menu extends Phaser.Scene {
     });
   }
 
+  criarProfessor() {
+    this.professor = this.add.image(0, 0, "professor");
 
+    this.professor.setScale(
+      (this.altura * 0.3) / this.professor.height
+    );
 
+    this.containerMosquito.add(this.professor);
 
+    this.aplicarProfessor(
+      this.registry.get("eggProfessor") === true
+    );
+  }
 
-  criarTitulos() {
-    this.titulos = [];
+  aplicarProfessor(ativo) {
+    this.professor.setVisible(ativo);
+    this.mosquito.setVisible(!ativo);
 
-    TITULOS.forEach((chave) => {
-      const imagem = this.add
-        .image(0, -this.altura, chave)
-        .setOrigin(0, 0)
-        .setDisplaySize(this.largura, this.altura)
-        .setDepth(6)
-        .setAlpha(0);
+    this.registry.set("eggProfessor", ativo);
+  }
 
-      this.titulos.push(imagem);
+  criarCorinthians() {
+    const alturaImagem = this.altura * 0.45;
+
+    this.corinthians = this.add
+      .image(
+        this.largura * 0.16,
+        this.altura * 0.75,
+        "corinthians"
+      )
+      .setOrigin(0.5)
+      .setDepth(5)
+      .setAlpha(0)
+      .setVisible(false);
+
+    const proporcao =
+      this.corinthians.width / this.corinthians.height;
+
+    this.corinthians.setDisplaySize(
+      alturaImagem * proporcao,
+      alturaImagem
+    );
+  }
+
+  animarCorinthians() {
+    const destinoX = this.largura * 0.16;
+    const destinoY = this.altura * 0.75;
+
+    this.tweens.killTweensOf(this.corinthians);
+
+    this.corinthians
+      .setPosition(destinoX - 150, destinoY + 20)
+      .setAngle(-8)
+      .setAlpha(0)
+      .setVisible(true);
+
+    this.tweens.add({
+      targets: this.corinthians,
+      x: destinoX,
+      y: destinoY,
+      alpha: 1,
+      angle: 0,
+      duration: 1100,
+      ease: "Back.Out",
+
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.corinthians,
+          y: destinoY - 7,
+          angle: -3,
+          duration: 1500,
+          ease: "Sine.InOut",
+          yoyo: true,
+          repeat: -1,
+        });
+      },
     });
   }
 
-  animarTitulo(indice) {
-    if (indice >= this.titulos.length) {
-      this.animarPlaca();
-      return;
-    }
-
-    const titulo = this.titulos[indice];
+  esconderCorinthians() {
+    this.tweens.killTweensOf(this.corinthians);
 
     this.tweens.add({
-      targets: titulo,
+      targets: this.corinthians,
+      alpha: 0,
+      x: this.corinthians.x - 100,
+      duration: 400,
+      ease: "Sine.In",
+
+      onComplete: () => {
+        this.corinthians.setVisible(false);
+      },
+    });
+  }
+
+  criarTitulo() {
+    this.titulo = this.add
+      .image(0, -this.altura, "menu-titulo1")
+      .setOrigin(0, 0)
+      .setDisplaySize(this.largura, this.altura)
+      .setDepth(6)
+      .setAlpha(0);
+  }
+
+  animarTitulo() {
+    this.tweens.add({
+      targets: this.titulo,
       y: 0,
       alpha: 1,
       duration: 650,
       ease: "Bounce.Out",
 
       onComplete: () => {
-        this.animarFlutuacaoTitulo(titulo, indice);
-
-        this.time.delayedCall(180, () => {
-          this.animarTitulo(indice + 1);
-        });
+        this.animarFlutuacaoTitulo();
+        this.animarPlaca();
       },
     });
   }
 
-  animarFlutuacaoTitulo(titulo, indice) {
+  animarFlutuacaoTitulo() {
     this.tweens.add({
-      targets: titulo,
+      targets: this.titulo,
       y: -3,
-      duration: 1800 + indice * 200,
+      duration: 1800,
       ease: "Sine.InOut",
       yoyo: true,
       repeat: -1,
     });
   }
 
-
-
-
-
   criarPlacas() {
-
     this.imagemPlacas = this.add
       .image(0, this.altura, "menu-placa")
       .setOrigin(0, 0)
@@ -292,7 +341,6 @@ export default class Menu extends Phaser.Scene {
   }
 
   animarPlaca() {
-
     this.tweens.add({
       targets: this.imagemPlacas,
       y: 0,
@@ -365,18 +413,16 @@ export default class Menu extends Phaser.Scene {
     });
   }
 
-
   mostrarMenuPronto() {
     this.containerMosquito.setPosition(
       this.largura * 0.85,
       this.altura * 0.80
     );
+
     this.animarFlutuacaoMosquito();
 
-    this.titulos.forEach((titulo, indice) => {
-      titulo.setPosition(0, 0).setAlpha(1);
-      this.animarFlutuacaoTitulo(titulo, indice);
-    });
+    this.titulo.setPosition(0, 0).setAlpha(1);
+    this.animarFlutuacaoTitulo();
 
     this.imagemPlacas.setY(0);
 
@@ -386,29 +432,33 @@ export default class Menu extends Phaser.Scene {
     });
 
     this.menuIniciado = true;
-  }
 
-  
-  criarProfessor() {
-    this.professor = this.add.image(0, 0, "professor");
-    
-    this.professor.setScale((this.altura * 0.3) / this.professor.height);
-    this.containerMosquito.add(this.professor);
-    this.aplicarProfessor(this.registry.get("eggProfessor") === true);
-  }
-
-  aplicarProfessor(ativo) {
-    this.professor.setVisible(ativo);
-    this.mosquito.setVisible(!ativo);
-    this.registry.set("eggProfessor", ativo); 
+    if (this.registry.get("eggProfessor") === true) {
+      this.animarCorinthians();
+      this.titulo.setTexture("menu-titulo2");
+    }
   }
 
   configurarKonami() {
-    const combo = this.input.keyboard.createCombo(KONAMI, { resetOnMatch: true });
+    const combo = this.input.keyboard.createCombo(KONAMI, {
+      resetOnMatch: true,
+    });
 
     const aoCompletar = () => {
-      
-      if (this.menuIniciado) this.aplicarProfessor(!this.professor.visible);
+      if (!this.menuIniciado) return;
+
+      const ativo =
+        this.registry.get("eggProfessor") !== true;
+
+      this.aplicarProfessor(ativo);
+
+      if (ativo) {
+        this.titulo.setTexture("menu-titulo2");
+        this.animarCorinthians();
+      } else {
+        this.titulo.setTexture("menu-titulo1");
+        this.esconderCorinthians();
+      }
     };
 
     this.input.keyboard.on("keycombomatch", aoCompletar);
@@ -418,8 +468,6 @@ export default class Menu extends Phaser.Scene {
       combo.destroy();
     });
   }
-
-
 
   abrirCena(nome) {
     if (this.scene.manager.keys[nome]) {
