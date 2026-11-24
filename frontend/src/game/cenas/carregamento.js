@@ -58,6 +58,7 @@ export default class Carregamento extends Phaser.Scene {
     this.load.audio("musica-minigame2", "/game/music/minigame2.mp3");
     this.load.audio("musica-minigame3", "/game/music/minigame3.mp3");
     this.load.audio("musica-minigame4", "/game/music/minigame4.mp3");
+    this.load.audio("musica-corinthians", "/game/music/corinthians.mp3");
 
     this.load.svg("nsp-fundo","/game/nao-seja-pego/tela_principal.svg");
     this.load.svg("nsp-cano", "/game/nao-seja-pego/cano.svg");

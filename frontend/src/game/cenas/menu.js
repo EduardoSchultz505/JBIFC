@@ -37,24 +37,34 @@ export default class Menu extends Phaser.Scene {
   }
 
   iniciarMusica() {
+    const eggAtivo = this.registry.get("eggProfessor") === true;
+
+    const chaveMusica = eggAtivo
+      ? "musica-corinthians"
+      : "musica-principal";
+
     let musicaMenu = this.registry.get("musicaMenu");
 
     if (
-      !musicaMenu ||
-      (!musicaMenu.isPlaying && !musicaMenu.isPaused)
+      musicaMenu &&
+      musicaMenu.key === chaveMusica &&
+      (musicaMenu.isPlaying || musicaMenu.isPaused)
     ) {
-      if (musicaMenu) {
-        musicaMenu.destroy();
-      }
-
-      musicaMenu = this.sound.add("musica-principal", {
-        loop: true,
-        volume: 0.3,
-      });
-
-      this.registry.set("musicaMenu", musicaMenu);
-      musicaMenu.play();
+      return;
     }
+
+    if (musicaMenu) {
+      musicaMenu.stop();
+      musicaMenu.destroy();
+    }
+
+    musicaMenu = this.sound.add(chaveMusica, {
+      loop: true,
+      volume: 0.3,
+    });
+
+    this.registry.set("musicaMenu", musicaMenu);
+    musicaMenu.play();
   }
 
   pararMusicaMenu() {
@@ -238,6 +248,23 @@ export default class Menu extends Phaser.Scene {
         this.corinthians.setVisible(false);
       },
     });
+  }
+
+  trocarMusica(chave) {
+    const musicaAtual = this.registry.get("musicaMenu");
+
+    if (musicaAtual) {
+      musicaAtual.stop();
+      musicaAtual.destroy();
+    }
+
+    const novaMusica = this.sound.add(chave, {
+      loop: true,
+      volume: 0.3,
+    });
+
+    this.registry.set("musicaMenu", novaMusica);
+    novaMusica.play();
   }
 
   criarTitulo() {
@@ -455,9 +482,13 @@ export default class Menu extends Phaser.Scene {
       if (ativo) {
         this.titulo.setTexture("menu-titulo2");
         this.animarCorinthians();
+
+        this.trocarMusica("musica-corinthians");
       } else {
         this.titulo.setTexture("menu-titulo1");
         this.esconderCorinthians();
+
+        this.trocarMusica("musica-principal");
       }
     };
 

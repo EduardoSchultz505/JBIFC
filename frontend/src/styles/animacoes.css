@@ -1,11 +1,6 @@
 @keyframes carrossel {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 @keyframes varredura {
@@ -42,12 +37,6 @@
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7), transparent);
   animation: brilho 1.6s ease-in-out infinite;
   animation-delay: var(--atraso, 0s);
-}
-
-.animate-carrossel {
-  width: max-content;
-  animation: carrossel 25s linear infinite;
-  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
