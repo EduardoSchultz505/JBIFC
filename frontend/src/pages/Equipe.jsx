@@ -4,7 +4,7 @@ const integrantes = [
   { nome: "Eduardo Schultz", funcao: "Desenvolvimento dos jogos e página web" },
   { nome: "Endrio Ruan", funcao: "Diretor de arte, Criação do Trailer e design dos jogos Use o Totem e da Interface do Menu" },
   { nome: "Guilherme Otávio", funcao: "Design dos Jogos Vilígia dos Porcos e Pegue Mais Lanche" },
-  { nome: "Gustavo Kell", funcao: "Design dos Jogos Jonha Bird e Solte os Porcos" },
+  { nome: "Gustavo Kell", funcao: "Design dos Jogos Jogue sem ser Pego e Solte os Porcos" },
   { nome: "João Araldi", funcao: "Gerenciamento de Grupo, Gerador de Ideias, Sonoplasta, Scrum Master, Product Owner, Revisador de conteúdo nas páginas, Gerenciador do Sistema Scrum e Testador de Jogos" },
   { nome: "Vinicius Pecini", funcao: "Desenvolvimento do banco de dados e backend" },
 ]

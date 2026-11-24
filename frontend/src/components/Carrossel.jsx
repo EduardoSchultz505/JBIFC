@@ -8,7 +8,7 @@ import VigiliaDosPorcos from "../assets/vigilia_dos_porcos_print.jpg";
 
 const jogos = [
   { nome: "Vigília dos Porcos", imagem: VigiliaDosPorcos },
-  { nome: "Jonha Bird", imagem: JonhaBird },
+  { nome: "Jogue sem ser Pego", imagem: JonhaBird },
   { nome: "Solte os Porcos", imagem: SolteOsPorcos },
   { nome: "Pegue Mais Lanche", imagem: PegueMaisLanche },
   { nome: "Use o Totem", imagem: UseOTotem },
