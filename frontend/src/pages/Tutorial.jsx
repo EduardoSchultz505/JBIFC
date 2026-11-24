@@ -69,6 +69,11 @@ export default function Tutorial() {
           <ArrowRight aria-hidden="true" size={18} />
         </Link>
       </Container>
+      <Container>
+      <p className="mb-8 text-md font-semibold tracking-tight bg-green-100 text-green-800 p-2 rounded-md">
+        Segredo: Utilize o código Konami na tela inicial do jogo (↑ ↑ ↓ ↓ ← → ← → B A)
+      </p>
+      </Container>
     </main>
   );
 }
