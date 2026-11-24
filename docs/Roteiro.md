@@ -10,11 +10,11 @@
 ## 1. Apresentação do projeto — Eduardo Schultz
 **Tempo: 0:00–1:00**
 
-Olá! Nós somos a equipe JBIFC e vamos apresentar nosso projeto de desenvolvimento de software: **A Regular Mosquito's Day**.
+Olá a todos! Nós somos a equipe JBIFC e vamos apresentar nosso projeto de desenvolvimento web, chamado **Regular Mosquito's Day**.
 
-O projeto consiste em um portal web de minijogos no estilo arcade, com estética pixel art e partidas rápidas que desafiam os reflexos, a atenção e a capacidade de reação dos jogadores.
+O projeto consiste em um portal web que reúne diversos minijogos no estilo arcade, com estética em pixel art. São partidas rápidas e dinâmicas, que desafiam os reflexos, a atenção e a capacidade de reação dos jogadores.
 
-Nossa proposta foi desenvolver uma aplicação que reunisse diferentes minijogos em uma única plataforma, oferecendo uma experiência simples e divertida.
+Nossa proposta é reunir diversas experiências de jogo em uma única plataforma, proporcionando uma experiência divertida para os usuários.
 
 ## 2. Objetivo, problema e público-alvo — Vinicius Pecini
 **Tempo: 1:00–2:00**
@@ -51,7 +51,7 @@ A interface foi desenvolvida com uma identidade visual própria, inspirada em jo
 
 O principal recurso da aplicação são os minijogos.
 
-Atualmente, desenvolvemos três desafios:
+Atualmente, desenvolvemos cinco desafios:
 
 **Lockpick:** o jogador precisa realizar uma tarefa de precisão e atenção para concluir o desafio.
 
@@ -62,6 +62,14 @@ Atualmente, desenvolvemos três desafios:
 [Demonstrar uma partida.]
 
 **Vigília dos Porcos:** outro desafio que exige atenção e rapidez nas decisões.
+
+[Demonstrar uma partida.]
+
+**Use o Totem:** o jogador precisa escolher o lanche correto no totem.
+
+[Demonstrar uma partida.]
+
+**Pegue Mais um Lanche:** Peça para a tia da merenda mais um lanche.
 
 [Demonstrar uma partida.]
 
@@ -87,9 +95,9 @@ A estrutura do projeto foi dividida em duas partes principais:
 
 O funcionamento ocorre da seguinte maneira: o jogador interage com o frontend, que envia requisições para a API. O backend processa essas informações e realiza as operações necessárias no banco de dados.
 
-A aplicação está publicada na Vercel e utiliza o Supabase para armazenamento dos dados.
+A aplicação está publicada na Vercel e utiliza o Supabase para armazenamento dos dados. E esse é o link atual do Vercel:
 
-## 6. Requisitos, desafios e soluções — Todos
+## 6. Requisitos, desafios e soluções — João
 **Tempo: 6:00–7:30**
 
 Durante o desenvolvimento, estabelecemos requisitos funcionais e não funcionais.
@@ -113,7 +121,7 @@ Também tivemos desafios na comunicação entre frontend e backend e na persist�
 
 Para solucionar esses problemas, organizamos melhor a estrutura do projeto, separamos as responsabilidades de cada parte e realizamos testes durante o desenvolvimento.
 
-## 7. Encerramento — Todos
+## 7. Encerramento — Endrio
 **Tempo: 7:30–8:00**
 
 Com isso, finalizamos a apresentação do nosso projeto, **A Regular Mosquito's Day**.
