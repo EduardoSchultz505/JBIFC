@@ -1,3 +1,4 @@
+
 import Phaser from "phaser";
 import { COR, FONTE, mostrarInstrucao } from "./instrucao.js";
 import Pausa from "./pausa.js";
@@ -20,6 +21,12 @@ const PONTOS_PARA_AUMENTAR_NIVEL = 5;
 const TEMPO_FEEDBACK = 900;
 const TEMPO_MINIMO = 1500;
 
+// Configurações do sorteio inteligente
+const HISTORICO_MAXIMO = 3;
+const PESO_FREQUENCIA = 0.35;
+const PESO_AUSENCIA = 0.25;
+const PESO_DIFICULDADE = 0.25;
+
 const FAIXAS_PARTIDA = [
   "musica-minigame1",
   "musica-minigame2",
@@ -37,14 +44,16 @@ export default class Partida extends Phaser.Scene {
     this.pontos = 0;
     this.fasesCompletas = 0;
 
-    
     this.sequenciaAtual = 0;
     this.sequenciaMaxima = 0;
     this.venceuComUmaVida = false;
     this.minigameMaisRapidoMs = null;
 
+    // Sistema de sorteio adaptativo
     this.rodadaSorteio = 0;
-this.registroSorteio = new Map(); 
+    this.registroSorteio = new Map();
+    this.historicoMinigames = [];
+
     this.minigame = null;
     this.estado = "instrucao";
     this.partidaTerminada = false;
@@ -124,11 +133,14 @@ this.registroSorteio = new Map();
       return;
     }
 
-    
     this.game.events.emit("inicio-de-partida");
 
     this.proximaRodada();
   }
+
+  // ==========================================
+  // SISTEMA DE MÚSICA
+  // ==========================================
 
   carregarMusicas() {
     this.musicas = {
@@ -223,18 +235,158 @@ this.registroSorteio = new Map();
     this.musicaPausada = false;
   }
 
-  atualizarHud() {
-    this.textoPontos.setText(`Pontos: ${this.pontos}`);
-    this.textoVidas.setText(`Vidas: ${this.vidas}`);
+  // ==========================================
+  // SORTEIO INTELIGENTE E ADAPTATIVO
+  // ==========================================
+
+  obterDificuldade(Minigame) {
+    const dificuldade =
+      Minigame.dificuldadeSorteio ??
+      Minigame.dificuldade ??
+      Minigame.prototype?.dificuldadeSorteio ??
+      Minigame.prototype?.dificuldade ??
+      3;
+
+    return Phaser.Math.Clamp(Number(dificuldade) || 3, 1, 5);
   }
 
-  pausar() {
-    if (this.estado !== "jogando") return;
+  obterPesoPersonalizado(Minigame) {
+    const peso =
+      Minigame.pesoSorteio ??
+      Minigame.prototype?.pesoSorteio ??
+      1;
 
-    this.pausarMusica();
-    this.scene.launch("Pausa");
-    this.scene.pause();
+    return Math.max(0.1, Number(peso) || 1);
   }
+
+  calcularPesoSorteio(Minigame, rodada) {
+    const registro = this.registroSorteio.get(Minigame) ?? {
+      vezes: 0,
+      ultima: -1,
+    };
+
+    // 1. Frequência: favorece jogos que apareceram menos.
+    const pesoFrequencia =
+      1 / (1 + registro.vezes * PESO_FREQUENCIA);
+
+    // 2. Ausência: favorece jogos que estão há mais tempo sem aparecer.
+    const ausencia = registro.ultima === -1
+      ? rodada + 1
+      : rodada - registro.ultima;
+
+    const pesoAusencia =
+      1 + Math.min(ausencia, 10) * PESO_AUSENCIA;
+
+    // 3. Dificuldade: adapta a seleção ao nível da partida.
+    const dificuldade = this.obterDificuldade(Minigame);
+
+    const dificuldadeDesejada = Phaser.Math.Clamp(
+      2.5 + this.nivel() * 0.35,
+      1,
+      5
+    );
+
+    const pesoDificuldade = Math.exp(
+      -Math.abs(dificuldade - dificuldadeDesejada) *
+        PESO_DIFICULDADE
+    );
+
+    // 4. Peso personalizado definido pelo próprio minigame.
+    const pesoPersonalizado = this.obterPesoPersonalizado(Minigame);
+
+    return (
+      pesoFrequencia *
+      pesoAusencia *
+      pesoDificuldade *
+      pesoPersonalizado
+    );
+  }
+
+  sortear() {
+    if (MINIGAMES.length === 1) {
+      const unico = MINIGAMES[0];
+
+      this.registrarSorteio(unico);
+
+      return unico;
+    }
+
+    const rodada = this.rodadaSorteio++;
+
+    // Primeiro, remove os minigames das últimas 3 rodadas.
+    let candidatos = MINIGAMES.filter(
+      (Minigame) =>
+        !this.historicoMinigames.includes(Minigame)
+    );
+
+    // Se não houver candidatos, relaxa a restrição.
+    // Isso permite partidas com menos de 4 minigames.
+    if (candidatos.length === 0) {
+      candidatos = MINIGAMES.filter(
+        (Minigame) =>
+          Minigame !== this.historicoMinigames[
+            this.historicoMinigames.length - 1
+          ]
+      );
+    }
+
+    // Segurança para qualquer configuração de quantidade.
+    if (candidatos.length === 0) {
+      candidatos = MINIGAMES;
+    }
+
+    // Calcula o peso de cada candidato.
+    const opcoes = candidatos.map((Minigame) => ({
+      Minigame,
+      peso: this.calcularPesoSorteio(Minigame, rodada),
+    }));
+
+    const pesoTotal = opcoes.reduce(
+      (total, opcao) => total + opcao.peso,
+      0
+    );
+
+    // Sorteio ponderado.
+    let alvo = Math.random() * pesoTotal;
+
+    let escolhido = opcoes[opcoes.length - 1].Minigame;
+
+    for (const opcao of opcoes) {
+      alvo -= opcao.peso;
+
+      if (alvo <= 0) {
+        escolhido = opcao.Minigame;
+        break;
+      }
+    }
+
+    this.registrarSorteio(escolhido);
+
+    return escolhido;
+  }
+
+  registrarSorteio(Minigame) {
+    const registro = this.registroSorteio.get(Minigame) ?? {
+      vezes: 0,
+      ultima: -1,
+    };
+
+    registro.vezes += 1;
+    registro.ultima = this.rodadaSorteio - 1;
+
+    this.registroSorteio.set(Minigame, registro);
+
+    // Atualiza o histórico recente.
+    this.historicoMinigames.push(Minigame);
+
+    if (this.historicoMinigames.length > HISTORICO_MAXIMO) {
+      this.historicoMinigames.shift();
+    }
+  }
+
+  // ==========================================
+  // DIFICULDADE E TEMPO
+  // ==========================================
 
   nivel() {
     return Math.floor(
@@ -242,45 +394,15 @@ this.registroSorteio = new Map();
     );
   }
 
-  sortear() {
-  if (MINIGAMES.length === 1) return MINIGAMES[0];
-
-  const rodada = this.rodadaSorteio++;
-
-  
-  const candidatos = MINIGAMES.map((M) => {
-    const reg = this.registroSorteio.get(M);
-    if (!reg) return { M, peso: 10 }; 
-
-    const ausencia = rodada - reg.ultima;
-    if (ausencia <= 1) return { M, peso: 0 }; 
-    return { M, peso: ausencia ** 2 / (1 + reg.vezes) };
-  });
-
-  
-  const total = candidatos.reduce((soma, c) => soma + c.peso, 0);
-  let alvo = Math.random() * total;
-  let escolhido = candidatos[candidatos.length - 1].M;
-
-  for (const c of candidatos) {
-    if (c.peso <= 0) continue;
-    alvo -= c.peso;
-    if (alvo <= 0) {
-      escolhido = c.M;
-      break;
-    }
-  }
-
-  const reg = this.registroSorteio.get(escolhido) ?? { vezes: 0, ultima: 0 };
-  this.registroSorteio.set(escolhido, { vezes: reg.vezes + 1, ultima: rodada });
-  return escolhido;
-}
-
   calcularTempo(duracaoBase) {
     const ms = duracaoBase * 1000 * 0.9 ** this.nivel();
 
     return Math.max(TEMPO_MINIMO, ms);
   }
+
+  // ==========================================
+  // RODADAS
+  // ==========================================
 
   proximaRodada() {
     const Minigame = this.sortear();
@@ -327,6 +449,10 @@ this.registroSorteio = new Map();
     }
   }
 
+  // ==========================================
+  // RESULTADO DA RODADA
+  // ==========================================
+
   encerrarRodada(venceu) {
     if (this.estado !== "jogando") return;
 
@@ -342,11 +468,9 @@ this.registroSorteio = new Map();
     if (venceu) {
       const nivelAnterior = this.nivel();
 
-      
       this.pontos += PONTOS_POR_VITORIA;
       this.fasesCompletas += 1;
 
-      
       this.sequenciaAtual += 1;
 
       this.sequenciaMaxima = Math.max(
@@ -354,12 +478,10 @@ this.registroSorteio = new Map();
         this.sequenciaAtual
       );
 
-      
       if (this.vidas === 1) {
         this.venceuComUmaVida = true;
       }
 
-      
       if (tempoExecutado > 0) {
         if (
           this.minigameMaisRapidoMs === null ||
@@ -380,7 +502,6 @@ this.registroSorteio = new Map();
         )
         .setColor(COR.verde);
     } else {
-      
       this.vidas -= 1;
       this.sequenciaAtual = 0;
 
@@ -400,6 +521,23 @@ this.registroSorteio = new Map();
         this.terminar();
       }
     });
+  }
+
+  // ==========================================
+  // FINALIZAÇÃO
+  // ==========================================
+
+  atualizarHud() {
+    this.textoPontos.setText(`Pontos: ${this.pontos}`);
+    this.textoVidas.setText(`Vidas: ${this.vidas}`);
+  }
+
+  pausar() {
+    if (this.estado !== "jogando") return;
+
+    this.pausarMusica();
+    this.scene.launch("Pausa");
+    this.scene.pause();
   }
 
   limparMinigame() {

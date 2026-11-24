@@ -57,7 +57,7 @@ export default class JogueSemSerPego {
     this.tempoOlhando = 1400;
     this.tempoSaindo = 450;
 
-    this.tolerancia = 350;
+    this.tolerancia = 500;
 
     this.saida = null;
     this.escondido = false;

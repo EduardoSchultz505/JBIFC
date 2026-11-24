@@ -8,7 +8,7 @@ export default class PegueOLanche {
   static titulo = "PEGUE O LANCHE";
   descricao = "A tia está servindo o lanche! Pare a barra na zona verde 5 vezes para pegar o máximo que conseguir. Errou, perdeu.";
   controles = ["ESPAÇO / MOUSE 1: PARAR A BARRA"];
-  duracao = 10;
+  duracao = 8;
   venceAoFimDoTempo = false;
 
   constructor(scene) {
