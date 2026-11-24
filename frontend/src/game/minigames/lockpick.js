@@ -29,7 +29,7 @@ export default class Lockpick {
     "E: ENCAIXAR GAZUA",
     "W A S D: ARROMBAR",
   ];
-  duracao = 8;
+  duracao = 9;
 
   constructor(scene) {
     this.scene = scene;

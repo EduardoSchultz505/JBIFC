@@ -8,7 +8,7 @@ export default class VigiliaDosPorcos {
     "MOUSE: INTERAGIR",
   ];
 
-  duracao = 8;
+  duracao = 9;
 
   constructor(scene) {
     this.scene = scene;
