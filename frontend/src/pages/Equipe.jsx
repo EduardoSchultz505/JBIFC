@@ -1,12 +1,12 @@
 import Tecnologias from "../components/Tecnologias"
 
 const integrantes = [
-  { nome: "Eduardo Schultz", funcao: "Desenvolvimento dos Jogos" },
-  { nome: "Endrio Ruan", funcao: "Design dos Jogos" },
-  { nome: "Guilherme Otávio", funcao: "Design dos Jogos" },
-  { nome: "Gustavo Kell", funcao: "Design dos Jogos" },
-  { nome: "João Araldi", funcao: "Gerenciamento de grupo e Testes" },
-  { nome: "Vinicius Pecini", funcao: "Desenvolvimento do Banco de Dados" },
+  { nome: "Eduardo Schultz", funcao: "Desenvolvimento dos jogos e página web" },
+  { nome: "Endrio Ruan", funcao: "Diretor de arte e design dos jogos Use o Totem e da Interface do Menu" },
+  { nome: "Guilherme Otávio", funcao: "Design dos Jogos Vilígia dos Porcos e Pegue Mais Lanche" },
+  { nome: "Gustavo Kell", funcao: "Design dos Jogos Jonha Bird e Solte os Porcos" },
+  { nome: "João Araldi", funcao: "Gerenciamento de Grupo, Gerador de Ideias, Sonoplasta, Scrum Master, Product Owner, Revisador de conteúdo nas páginas, Gerenciador do Sistema Scrum e Testador de Jogos" },
+  { nome: "Vinicius Pecini", funcao: "Desenvolvimento do banco de dados e backend" },
 ]
 
 export default function Equipe() {

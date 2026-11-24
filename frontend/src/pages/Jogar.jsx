@@ -341,7 +341,7 @@ export default function Jogar() {
         <section className="overflow-hidden rounded-xl border border-game-line bg-game text-white shadow-game">
           <header className="flex items-center justify-between border-b border-white/10 bg-game px-4 py-3">
             <span className="text-sm font-semibold">
-              A Regular Mosquito's Day
+              Regular Mosquito's Day
             </span>
 
             <button
